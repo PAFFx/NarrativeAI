@@ -1,0 +1,3 @@
+"""
+NarrativeAI application package.
+""" 
