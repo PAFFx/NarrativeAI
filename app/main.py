@@ -1,10 +1,25 @@
 from llm.workflow import WorkflowBuilder
 from langgraph.graph.state import CompiledStateGraph
+from langchain.schema import HumanMessage, AIMessage, SystemMessage
+
+def get_message_content(message):
+    """Extract content and role from different message formats."""
+    if isinstance(message, (HumanMessage, AIMessage, SystemMessage)):
+        role = "user" if isinstance(message, HumanMessage) else "assistant"
+        return role, message.content
+    elif isinstance(message, tuple):
+        return message
+    return "unknown", str(message)
 
 def stream_graph_updates(user_input: str, workflow: CompiledStateGraph):
-    for event in workflow.stream({"messages": [("user", user_input)]}):
-        for value in event.values():
-            print("Assistant:", value["messages"][-1].content)
+    config = {"configurable": {"thread_id": "1"}}
+    events = workflow.stream({"messages": [("user", user_input)]}, config, stream_mode='values')
+    for event in events:
+        messages = event["messages"]
+        if messages:
+            role, content = get_message_content(messages[-1])
+            if (role != "user"):
+                print(f"{role.capitalize()}: {content}")
 
 
 def main():
@@ -18,7 +33,7 @@ def main():
 
             stream_graph_updates(user_input, workflow)
         except Exception as e:
-            print("Exception:",e)
+            print("Exception:", e)
             break
 
 if __name__ == "__main__":
