@@ -1,6 +1,7 @@
 from llm.workflow import WorkflowBuilder
 from langgraph.graph.state import CompiledStateGraph
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from narrativeai.llm.models import StoryContext
 
 def get_message_content(message):
     """Extract content and role from different message formats."""
@@ -23,7 +24,8 @@ def stream_graph_updates(user_input: str, workflow: CompiledStateGraph):
 
 
 def main():
-    workflow = WorkflowBuilder().compile()
+    story_context = StoryContext(genre="mecha", tone="war")
+    workflow = WorkflowBuilder(story_context).compile()
     while True:
         try:
             user_input = input("User: ")

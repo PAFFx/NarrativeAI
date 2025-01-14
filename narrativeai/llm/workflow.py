@@ -1,5 +1,6 @@
 from .states import GraphState
 from .agents.writer import WriterAgent
+from .models import StoryContext
 from .agents.tools.neo4j import Neo4jTool
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
@@ -7,7 +8,8 @@ from langgraph.prebuilt import ToolNode
 
 
 class WorkflowBuilder:
-    def __init__(self):
+    def __init__(self, story_context: StoryContext):
+        self.story_context = story_context
         self.graph_builder = StateGraph(GraphState)
         self._setup_agents()
         self._setup_graph()
@@ -19,7 +21,10 @@ class WorkflowBuilder:
         
         # Initialize writer agent with tools
         self.writer_agent = WriterAgent(tools=self.tools)
-
+        self.writer_agent.update_context(
+            genre=self.story_context.genre,
+            tone=self.story_context.tone
+        )
         # Add nodes
         self.graph_builder.add_node("writer", self._writer_node)
         self.tool_node = ToolNode(tools=self.tools)
@@ -28,14 +33,15 @@ class WorkflowBuilder:
     def _writer_node(self, state: GraphState) -> GraphState:
         """Process the input through the writer agent with tools."""
         messages = state["messages"]
-        if not messages:
-            return {"messages": [("assistant", "I'm ready to help you write a story. What would you like to write about?")]}
-
-        # Get response from writer agent with tools
         response = self.writer_agent.invoke(messages)
         
-        # Return updated state with all previous messages plus the new one
-        return {"messages": messages + [response]}
+        return {"messages": [response]}
+    
+    def _longterm_plotter_node(self, state: GraphState) -> GraphState:
+        """Process the input through the longterm plotter agent with tools."""
+        messages = state["messages"]
+        response = self.longterm_plotter_agent.invoke(messages)
+        return {"messages": [response]}
 
     def _route_tools(self, state: GraphState) -> GraphState:
         if isinstance(state, list):
