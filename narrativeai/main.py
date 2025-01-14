@@ -1,7 +1,12 @@
+from pprint import pprint
 from llm.workflow import WorkflowBuilder
 from langgraph.graph.state import CompiledStateGraph
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from narrativeai.llm.models import StoryContext
+from llm.models import StoryContext
+
+# ANSI escape codes for colors
+GRAY = "\033[90m"
+RESET = "\033[0m"
 
 def get_message_content(message):
     """Extract content and role from different message formats."""
@@ -20,8 +25,10 @@ def stream_graph_updates(user_input: str, workflow: CompiledStateGraph):
         if messages:
             role, content = get_message_content(messages[-1])
             if (role != "user"):
-                print(f"{role.capitalize()}: {content}")
-
+                if (content.startswith("PLOT:")):
+                    print(f"{GRAY}{content}{RESET}")
+                else:
+                    print(f"{role.capitalize()}: {content}")
 
 def main():
     story_context = StoryContext(genre="mecha", tone="war")
