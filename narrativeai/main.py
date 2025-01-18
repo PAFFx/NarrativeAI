@@ -6,6 +6,7 @@ from llm.models import StoryContext
 
 # ANSI escape codes for colors
 GRAY = "\033[90m"
+BLUE = "\033[94m"
 RESET = "\033[0m"
 
 def get_message_content(message):
@@ -17,20 +18,23 @@ def get_message_content(message):
         return message
     return "unknown", str(message)
 
-def stream_graph_updates(user_input: str, workflow: CompiledStateGraph):
-    config = {"configurable": {"thread_id": "1"}}
-    events = workflow.stream({"messages": [("user", user_input)]}, config, stream_mode='values')
+def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, story_context: StoryContext, config: dict):
+    events = workflow.stream({"stories": [("user", user_input)], "context": story_context}, config, stream_mode='values')
     for event in events:
-        messages = event["messages"]
-        if messages:
-            role, content = get_message_content(messages[-1])
+        longterm_plots = event["longterm_plots"]
+        if longterm_plots and len(longterm_plots) != 0:
+            _, content = get_message_content(longterm_plots[-1])
+            print(f"{GRAY}{content}{RESET}")
+
+        story = event["stories"]
+        if story and len(story) != 0:
+            role, content = get_message_content(story[-1])
             if (role != "user"):
-                if (content.startswith("PLOT:")):
-                    print(f"{GRAY}{content}{RESET}")
-                else:
-                    print(f"{role.capitalize()}: {content}")
+                print(f"{BLUE}{role.capitalize()}: {content}{RESET}")
+
 
 def main():
+    config = {"configurable": {"thread_id": "1"}}
     story_context = StoryContext(genre="mecha", tone="war")
     workflow = WorkflowBuilder(story_context).compile()
     while True:
@@ -40,7 +44,7 @@ def main():
                 print("Goodbye!")
                 break
 
-            stream_graph_updates(user_input, workflow)
+            stream_graph_updates(user_input, workflow, story_context, config)
         except Exception as e:
             print("Exception:", e)
             break
