@@ -7,7 +7,6 @@ MessageRole = Literal["user", "assistant", "system"]
 Message = Tuple[MessageRole, str]
 
 @dataclass
-
 class GraphState(TypedDict):
     """State definition for the story generation workflow."""
     stories: Annotated[List[Message], add_messages]
