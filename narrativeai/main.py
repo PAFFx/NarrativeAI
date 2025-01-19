@@ -18,11 +18,10 @@ def get_message_content(message):
         return message
     return "unknown", str(message)
 
-def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, genre: str, config: dict):
+def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, config: dict):
     # Initialize state
     initial_state = {
-        "stories": [("user", user_input)], 
-        "genre": genre,
+        "stories": [("user", user_input)],
         "longterm_plots": [],
         "guidelines": [],
         "requested_act": None
@@ -56,11 +55,11 @@ def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, genre: s
                 print(f"{BLUE}{role.capitalize()}: {content}{RESET}")
             last_story_len = len(story)
 
-
 def main():
     config = {"configurable": {"thread_id": "1"}}
-    genre = "mecha"
-    workflow = WorkflowBuilder().compile()
+    genre_list = ["mecha", "war", "sci-fi"]  # Example genre list
+    workflow = WorkflowBuilder(genre_list=genre_list).compile()
+
     while True:
         try:
             user_input = input("User: ")
@@ -68,7 +67,7 @@ def main():
                 print("Goodbye!")
                 break
 
-            stream_graph_updates(user_input, workflow, genre, config)
+            stream_graph_updates(user_input, workflow, config)
         except Exception as e:
             print("Exception:", e)
             break
