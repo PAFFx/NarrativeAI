@@ -25,9 +25,3 @@ class Neo4jQueryResult:
             answer="I encountered an error while trying to answer your question.",
             error=str(error)
         )
-
-@dataclass
-class StoryContext:
-    """Maintains the current state and context of the story."""
-    tone: str = ""
-    genre: str = ""
