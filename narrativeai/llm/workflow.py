@@ -8,11 +8,13 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 from langchain_core.runnables.config import RunnableConfig
 from typing_extensions import Literal
+from typing import List
 
 
 class WorkflowBuilder:
-    def __init__(self):
+    def __init__(self, genre_list: List[str]):
         self.graph_builder = StateGraph(GraphState)
+        self.genre_list = genre_list
         self._setup_agents()
         self._setup_graph()
 
@@ -21,12 +23,12 @@ class WorkflowBuilder:
         #self.graph_tool = Neo4jTool()
         
         # Initialize writer agent with tools
-        self.writer_agent = WriterAgent()
+        self.writer_agent = WriterAgent(genre_list=self.genre_list)
 
-        self.longterm_plotter_agent = LongTermPlotterAgent()
+        self.longterm_plotter_agent = LongTermPlotterAgent(genre_list=self.genre_list)
 
         self.narrative_agent_tools = [LongTermPlotterAgent.transfer_to_longterm_plotter]
-        self.narrative_agent = NarrativeAgent(self.narrative_agent_tools)
+        self.narrative_agent = NarrativeAgent(tools=self.narrative_agent_tools, genre_list=self.genre_list)
 
         # Add nodes
         self.graph_builder.add_node("writer", self._writer_node)

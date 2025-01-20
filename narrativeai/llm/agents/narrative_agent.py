@@ -8,11 +8,12 @@ from langchain.schema import AIMessage
 class NarrativeAgent:
     """An agent that plan structure story and create writing guidelines."""
     
-    def __init__(self, tools: List[BaseTool]):
+    def __init__(self, tools: List[BaseTool], genre_list: List[str]):
         self.llm = get_model("gpt-4o")
         self.llm = self.llm.bind_tools(tools)
+        self.genre_list = genre_list
 
-        self.scene_tones = ["happy", "sad", "neutral", "angry", "fearful", "disgusted", "surprised", "disappointed", "excited", "anxious", "disgusted", "surprised", "disappointed", "excited", "anxious"]
+        self.scene_tones = ["happy", "sad", "neutral", "angry", "fearful", "disgusted", "surprised", "disappointed", "excited", "anxious"]
         self.possible_acts = ["beginning", "rising action", "middle", "plot twist", "falling action", "catastrophe", "rising back", "resolution"]
         #TODO: just plot or entire story history should be used?
         self.co_writing_prompt = ChatPromptTemplate.from_messages([
@@ -34,14 +35,16 @@ class NarrativeAgent:
             [Steps to plan story]:
             1. Read the genre and plot's history.
             2. Consider the sequence of acts. You can continue current act or move to the next act based on the previous plots.
-            3. You are only structure planner. You MUST NOT generate any lore by yourself. Stop writing and Ask the longterm_plotter agent by giving it the current act.
-                If it's the beginning act or the act has changed from the previous act, you must ask the longterm_plotter agent for help.
+            3. Consider asking the longterm plotter for help generating new plot ideas. This is important because a strucure alone cannot drive the story forward.
+               * Note that longterm_plotter agent can generate plot ideas better than yourself.
+               * When you have no plot ideas, you must ask the longterm_plotter agent for help.
+               * When you encounter unknown elements, character, scene, etc. you must ask the longterm_plotter agent for help.
             4. Determine the scene's tone based on provided list of tones.
             5. Write guidelines that continue the story forward. 
                * An act can have multiple scenes so continue the story forward don't stop at the same guidelines for the same act.
                * Write scene specific guidelines. Don't be abstract.
                * Avoid summarizing the story.
-            * In the output, the guideline should only mention one element, such as a scene, a character, or a detail. This is important because it allows writer to focus all of their attention on one element, thereby producing a better story. 
+               * In the output, the guideline should only mention one element, such as a scene, a character, or a detail. This is important because it allows writer to focus all of their attention on one element, thereby producing a better story. 
                * Always start the story establishing the world. Follow by the character.
             6. Generate response based on the [Guidelines]
 
@@ -54,7 +57,7 @@ class NarrativeAgent:
             - Use bold and italics text for emphasis, organization, and style 
             }}
 
-            Genre: {genre}
+            Genre list: {genre_list}
             All writing tones: {list_of_tones}
             Sequence of acts: {sequence_of_acts}
 
@@ -84,7 +87,7 @@ class NarrativeAgent:
             
             # Prepare context for the prompt
             context = {
-                "genre": state["genre"] if state["genre"] else "Not specified",
+                "genre_list": ", ".join(self.genre_list),
                 "list_of_tones": self.scene_tones,
                 "sequence_of_acts": self.possible_acts,
                 "guidelines": format_conversation(state["guidelines"]) if state["guidelines"] else "",
