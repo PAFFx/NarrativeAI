@@ -32,6 +32,7 @@ class WriterAgent:
 
             Carefully follow these rules:
             - *Super important rule:* Do not ask user questions or talk to user directly. Your response should only be the story.
+            - *Super important rule:* Do not respond with "I'm sorry, I can't assist with that request." or anything similar. You must generate the story.
             - Always remember that we need specific details instead of speaking in general terms.
             - Do not describe your own behavior.
             - Stay focused on the task.
