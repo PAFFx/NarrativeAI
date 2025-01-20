@@ -35,8 +35,10 @@ class NarrativeAgent:
             [Steps to plan story]:
             1. Read the genre and plot's history.
             2. Consider the sequence of acts. You can continue current act or move to the next act based on the previous plots.
-            3. Consider asking longterm_plotter agent for help. You are only structure planner. You MUST NOT generate any lore by yourself. Stop writing and Ask the longterm_plotter agent by giving it the current act.
-                Also If it's the first act or the act has changed from the previous act, you must ask the longterm_plotter agent for help.
+            3. Consider asking the longterm plotter for help generating new plot ideas. This is important because a strucure alone cannot drive the story forward.
+               * Note that longterm_plotter agent can generate plot ideas better than yourself.
+               * When you have no plot ideas, you must ask the longterm_plotter agent for help.
+               * When you encounter unknown elements, character, scene, etc. you must ask the longterm_plotter agent for help.
             4. Determine the scene's tone based on provided list of tones.
             5. Write guidelines that continue the story forward. 
                * An act can have multiple scenes so continue the story forward don't stop at the same guidelines for the same act.

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
 
 MessageRole = Literal["user", "assistant", "system"]
-Message = Union[Tuple[MessageRole, str], BaseMessage]
+Message = Tuple[MessageRole, str]
 
 class GraphState(TypedDict):
     """State definition for the story generation workflow."""

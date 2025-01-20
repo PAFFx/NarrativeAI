@@ -15,6 +15,7 @@ DB_NAME = config(
 #Collection names
 DB_STORY_COLLECTION = "Story"
 DB_GENRE_COLLECTION = "Genre"
+DB_STORY_STATE_COLLECTION = "StoryState"
 
 
 

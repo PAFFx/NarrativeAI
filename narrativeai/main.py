@@ -1,5 +1,5 @@
 from pprint import pprint
-from llm.workflow import WorkflowBuilder
+from .llm.workflow import WorkflowBuilder
 from langgraph.graph.state import CompiledStateGraph
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
