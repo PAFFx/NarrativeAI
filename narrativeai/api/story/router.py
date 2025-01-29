@@ -17,14 +17,14 @@ router = APIRouter(
     ],
 )
 
-@router.get(
-        "/",
-        status_code=200,
-        response_model_exclude_none=True,
-        response_model=ListStoryResponseModel,
-        )
-async def get_story_list(skip: int = 0, limit: int = 30):
-    stories: list[StoryModel] = list_stories_response(skip, limit)
+@router.get("", response_model=ListStoryResponseModel)
+async def list_stories(
+    skip: int = 0,
+    limit: int = 10,
+    author_firebase_uid: str | None = None
+):
+    """List stories with optional author filter."""
+    stories = list_stories_response(skip, limit, author_firebase_uid)
     return ListStoryResponseModel(stories=stories)
 
 @router.post(

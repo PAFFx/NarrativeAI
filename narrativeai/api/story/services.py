@@ -16,6 +16,7 @@ from ..dependencies import HttpExceptionCustom
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 import logging
 from typing import List, Tuple
+from ..user.database import get_user_by_firebase_uid
 
 logger = logging.getLogger(__name__)
 
@@ -28,22 +29,33 @@ def get_message_content(message) -> Tuple[str, str]:
         return message
     return "unknown", str(message)
 
-def list_stories_response(skip: int, limit: int) -> list[StoryModel]:
-    
-    stories = query_list_stories(skip, limit)
+def list_stories_response(skip: int, limit: int, author_firebase_uid: str | None = None) -> list[StoryModel]:
+    """List stories with optional author filter."""
+    stories = query_list_stories(skip, limit, author_firebase_uid)
     genre_lists = query_list_genre()
     
     # Create a lookup dictionary for faster genre name retrieval
     genre_lookup = {genre["id"]: genre["name"] for genre in genre_lists}
     
+    # Process each story
     for story in stories:
+        # Process genres
         genre_list = []
         for genre_id in story["genre_list"]:
             genre_name = genre_lookup.get(genre_id, "Unknown")
             genre_list.append(GenreModel(id=genre_id, name=genre_name))
         story["genre_list"] = genre_list
+        
+        # Get author display name
+        if "author_firebase_uid" in story:
+            user = get_user_by_firebase_uid(story["author_firebase_uid"])
+            if user:
+                story["author"] = user.get("display_name", None)
+            else:
+                story["author"] = None
+            del story["author_firebase_uid"]
 
-    logger.info(f"Processed {len(stories)} stories with genres")
+    logger.info(f"Processed {len(stories)} stories with genres and authors")
     return stories
 
 async def get_story_response(story_id: str) -> StoryModel:
@@ -58,6 +70,15 @@ async def get_story_response(story_id: str) -> StoryModel:
         genre_name = genre_lookup.get(genre_id, "Unknown")
         genre_list.append(GenreModel(id=genre_id, name=genre_name))
     story["genre_list"] = genre_list
+
+    # Get author display name
+    if "author_firebase_uid" in story:
+        user = get_user_by_firebase_uid(story["author_firebase_uid"])
+        if user:
+            story["author"] = user.get("display_name", None)
+        else:
+            story["author"] = None
+        del story["author_firebase_uid"]
 
     return story
 

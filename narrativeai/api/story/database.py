@@ -9,12 +9,22 @@ from .schema import StoryCreateRequestModel, StoryStateModel
 
 logger = logging.getLogger(__name__)
 
-def query_list_stories(skip: int, limit: int) -> list:
+def query_list_stories(skip: int, limit: int, author_firebase_uid: str | None = None) -> list:
     try:
-        stories_cursor = db_client.story_collection.find(skip=skip, limit=limit)
+        # Create filter
+        filter_query = {}
+        if author_firebase_uid:
+            filter_query["author_firebase_uid"] = author_firebase_uid
+            
+        stories_cursor = db_client.story_collection.find(
+            filter=filter_query,
+            skip=skip,
+            limit=limit
+        )
         stories = []
         for story in stories_cursor:
             story["id"] = str(story["_id"])
+            del story["_id"]
             genre_list = []
             for genre in story["genre_list"]:
                 genre_list.append(str(genre))
@@ -22,8 +32,9 @@ def query_list_stories(skip: int, limit: int) -> list:
             stories.append(story)
         return stories
 
-    except InvalidId:
-        raise HttpExceptionCustom.bad_request
+    except Exception as e:
+        logger.error(f"Error listing stories: {e}")
+        raise HttpExceptionCustom.internal_server_error
 
 def query_list_genre() -> list:
     try:
@@ -126,18 +137,31 @@ async def query_story(story_id: str) -> dict:
         logger.error(f"Error fetching story: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-async def create_story_doc(request: StoryCreateRequestModel):
-    """Create a new story."""
-
-    # Create story document
-    story_doc = {
-        "title": request.title,
-        "description": request.description,
-        "genre_list": [ObjectId(g_id) for g_id in request.genre_ids],
-        "cover_image": request.cover_image,
-        "author": request.author
-    }
-
-    # return story_id if successful
-    insert_result = db_client.story_collection.insert_one(story_doc)
-    return insert_result.inserted_id
+async def create_story_doc(request: StoryCreateRequestModel) -> str:
+    """Create a new story document."""
+    logger.info(f"Creating story document for story {request.title}")
+    
+    try:
+        # Convert request model to dict
+        story_data = {
+            "title": request.title,
+            "description": request.description,
+            "genre_list": [ObjectId(genre_id) for genre_id in request.genre_ids],
+            "cover_image": request.cover_image,
+            "author_firebase_uid": request.author_firebase_uid,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Insert story
+        result = await db_client.story_collection.insert_one(story_data)
+        if not result.inserted_id:
+            logger.error("Failed to insert story document")
+            return None
+            
+        logger.info(f"Created story document with id: {result.inserted_id}")
+        return result.inserted_id
+        
+    except Exception as e:
+        logger.error(f"Error creating story document: {e}")
+        raise HttpExceptionCustom.internal_server_error

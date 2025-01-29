@@ -13,14 +13,14 @@ class StoryModel(BaseModel):
     description: str
     genre_list: list[GenreModel]
     cover_image: str | None = None
-    author: str | None = None
+    author: str | None = None  # This will be the display name
 
 class StoryCreateRequestModel(BaseModel):
     title: str
     description: str
     genre_ids: list[str]
     cover_image: str | None = None
-    author: str | None = None
+    author_firebase_uid: str  # This is the Firebase UID for storage
 
 class ListStoryResponseModel(BaseModel):
     stories: list[StoryModel]

@@ -5,6 +5,7 @@ from .config import (
     DB_NAME,
     DB_STORY_COLLECTION,
     DB_GENRE_COLLECTION,
+    DB_USER_COLLECTION,
 )
 
 class DB_client(MongoClient):
@@ -16,5 +17,6 @@ class DB_client(MongoClient):
         self.story_collection = self.db.get_collection(DB_STORY_COLLECTION)
         self.genre_collection = self.db.get_collection(DB_GENRE_COLLECTION)
         self.story_states_collection = self.db.get_collection(DB_STORY_STATE_COLLECTION)
+        self.user_collection = self.db.get_collection(DB_USER_COLLECTION)
         
 db_client = DB_client(MONGODB_URI)
