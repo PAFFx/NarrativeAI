@@ -14,7 +14,7 @@ class GenericOKResponse(BaseModel):
     detail: str = "OK"
 
 
-class HttpException:
+class HttpExceptionCustom:
     # 4xx
     bad_request = HTTPException(400, detail="Bad Request")
     unauthorized = HTTPException(401, detail="Unauthorized")

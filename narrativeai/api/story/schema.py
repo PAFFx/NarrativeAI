@@ -15,6 +15,13 @@ class StoryModel(BaseModel):
     cover_image: str | None = None
     author: str | None = None
 
+class StoryCreateRequestModel(BaseModel):
+    title: str
+    description: str
+    genre_ids: list[str]
+    cover_image: str | None = None
+    author: str | None = None
+
 class ListStoryResponseModel(BaseModel):
     stories: list[StoryModel]
 
@@ -38,6 +45,10 @@ class StoryMessageModel(BaseModel):
 class WriteRequestModel(BaseModel):
     """Model for write request body."""
     message: str
+
+class StoryCreateResponseModel(BaseModel):
+    """Response model for story creation."""
+    story_id: str
 
 
 

@@ -1,14 +1,18 @@
 from datetime import datetime
 from .database import (
+    create_story_doc,
+    create_story_state,
     query_list_stories,
     query_list_genre,
     query_story_state,
     update_story_state,
     query_story
 )
-from .schema import StoryModel, GenreModel, StoryStateModel
+
+from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel
 from ...llm.states import Message
 from ...llm.workflow import WorkflowBuilder
+from ..dependencies import HttpExceptionCustom
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 import logging
 from typing import List, Tuple
@@ -138,3 +142,30 @@ async def write_story_message(story_id: str, message: str) -> List[Message]:
     
     # Return only the new messages
     return new_messages
+
+async def create_new_story(request: StoryCreateRequestModel) -> str:
+    """Create a new story. Also initializes the story state."""
+    
+    # Create story document
+    story_id = await create_story_doc(request)
+    if not story_id:
+        logger.error(f"Failed to create story document for story {request.title}")
+        raise HttpExceptionCustom.internal_server_error
+
+    # Initialize story state
+    state_model = StoryStateModel(
+        story_id=str(story_id),
+        stories=[],
+        longterm_plots=[],
+        guidelines=[],
+        requested_act=None,
+        updated_at=datetime.utcnow()
+    )
+
+    # Save story state
+    story_state_id = await create_story_state(story_id, state_model)
+    if not story_state_id:
+        logger.error(f"Failed to initialize story state for story {story_id}")
+        raise HttpExceptionCustom.internal_server_error
+
+    return str(story_id)

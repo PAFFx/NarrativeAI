@@ -4,8 +4,8 @@ from bson.objectid import ObjectId
 from bson.errors import InvalidId
 
 from ..database import db_client
-from ..dependencies import HttpException
-from .schema import StoryStateModel
+from ..dependencies import HttpExceptionCustom
+from .schema import StoryCreateRequestModel, StoryStateModel
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def query_list_stories(skip: int, limit: int) -> list:
         return stories
 
     except InvalidId:
-        raise HttpException.bad_request
+        raise HttpExceptionCustom.bad_request
 
 def query_list_genre() -> list:
     try:
@@ -35,7 +35,7 @@ def query_list_genre() -> list:
         return genres
 
     except InvalidId:
-        raise HttpException.bad_request
+        raise HttpExceptionCustom.bad_request
 
 async def query_story_state(story_id: str) -> dict:
     """Get story state from database."""
@@ -58,7 +58,21 @@ async def query_story_state(story_id: str) -> dict:
         
     except Exception as e:
         logger.error(f"Error fetching story state: {e}")
-        raise HttpException.internal_server_error
+        raise HttpExceptionCustom.internal_server_error
+
+async def create_story_state(story_id: str, state: StoryStateModel) -> str:
+    """Create story state in database."""
+    logger.info(f"Creating story state for story {story_id}")
+    state_dict = state.model_dump()
+    state_dict["story_id"] = ObjectId(story_id)
+    state_dict["updated_at"] = datetime.utcnow()
+    
+    try:
+        insert_result = db_client.story_states_collection.insert_one(state_dict)
+        return insert_result.inserted_id
+    except Exception as e:
+        logger.error(f"Error creating story state: {e}")
+        raise HttpExceptionCustom.internal_server_error
 
 async def update_story_state(story_id: str, state: StoryStateModel) -> bool:
     """Update story state in database."""
@@ -87,7 +101,7 @@ async def update_story_state(story_id: str, state: StoryStateModel) -> bool:
         
     except Exception as e:
         logger.error(f"Error updating story state: {e}")
-        raise HttpException.internal_server_error
+        raise HttpExceptionCustom.internal_server_error
 
 async def query_story(story_id: str) -> dict:
     """Get single story from database."""
@@ -110,4 +124,20 @@ async def query_story(story_id: str) -> dict:
         
     except Exception as e:
         logger.error(f"Error fetching story: {e}")
-        raise HttpException.internal_server_error
+        raise HttpExceptionCustom.internal_server_error
+
+async def create_story_doc(request: StoryCreateRequestModel):
+    """Create a new story."""
+
+    # Create story document
+    story_doc = {
+        "title": request.title,
+        "description": request.description,
+        "genre_list": [ObjectId(g_id) for g_id in request.genre_ids],
+        "cover_image": request.cover_image,
+        "author": request.author
+    }
+
+    # return story_id if successful
+    insert_result = db_client.story_collection.insert_one(story_doc)
+    return insert_result.inserted_id
