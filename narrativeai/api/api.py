@@ -7,10 +7,14 @@ import uvicorn
 from .database import db_client
 
 from .story.router import router as story_router
+from .genre.router import router as genre_router
+from .user.router import router as user_router
 
 app = FastAPI()
 # add router here
 app.include_router(story_router)
+app.include_router(genre_router)
+app.include_router(user_router)
 
 app.add_middleware(
     CORSMiddleware,
