@@ -1,16 +1,20 @@
-from typing import Dict, Optional, List
-from ..utils import format_conversation, get_model
-from pydantic import BaseModel
+import logging
+from typing import Dict, List
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import AIMessage
 from langchain_core.tools import tool
 from langchain_core.runnables.config import RunnableConfig
 
+from ..llm import get_model, ModelName
+from ..utils import format_conversation
+
+logger = logging.getLogger(__name__)
+
 class LongTermPlotterAgent:
     """An agent that helps plan and structure the story's plot."""
     
-    def __init__(self, genre_list: List[str]):
-        self.llm = get_model("gpt-4o")
+    def __init__(self, genre_list: List[str], model_name: ModelName = "gpt-4"):
+        self.llm = get_model(model_name=model_name)
         self.genre_list = genre_list
         
         self.plotting_prompt = ChatPromptTemplate.from_messages([
@@ -66,14 +70,13 @@ class LongTermPlotterAgent:
 
             Genre list: {genre_list}
 
-            Requested act: {requested_act}
-
             Previous conversation:
             {previous_story}
 
             Previous plot discussion summary:
             {previous_plot_history}
             """),
+            ("user", "Requested act: {requested_act}"),
         ])
 
     def _extract_summarizer_messages(self, response: str) -> str:
