@@ -52,5 +52,11 @@ class StoryCreateResponseModel(BaseModel):
     """Response model for story creation."""
     story_id: str
 
+class WriteFromPromptRequestModel(BaseModel):
+    """Model for write from prompt request body."""
+    story: str
+    model: str | None = "gpt-4o"  # Available models: gpt-4o, claude-3-sonnet
 
-
+class WriteFromPromptResponseModel(BaseModel):
+    """Response model for write from prompt."""
+    next_story: str

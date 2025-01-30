@@ -20,6 +20,7 @@ from langchain.schema import HumanMessage, AIMessage, SystemMessage
 import logging
 from typing import List, Tuple
 from ..user.database import get_user_by_firebase_uid
+from langchain.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,63 @@ def get_story_message(story_id: str) -> list[str]:
     if state and state.stories:
         return state.stories
     return []
+
+def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
+    """Write response from prompt using the workflow.
+    
+    Args:
+        story: The story prompt to generate from
+        model: The model to use for generation (default: gpt-4o)
+        
+    Returns:
+        First generated story response
+    """
+    try:
+        # Convert user-friendly model name to actual model name
+        model_name = get_model_name(model)
+        
+        # Create initial state with the input story as user message
+        initial_state = StoryStateModel(
+            story_id="temp",  # Temporary ID since we don't need to save
+            stories=[("user", story)],
+            longterm_plots=[],
+            guidelines=[],
+            requested_act=None,
+            conseq_longterm_count=0,
+            updated_at=datetime.utcnow()
+        )
+        
+        # Get workflow
+        workflow = WorkflowBuilder(
+            genre_list=["creative"],  # Default genre since we don't need specific ones
+            narrative_model=model_name,
+            writer_model=model_name,
+            plotter_model=model_name,
+        ).compile()
+        
+        config = {"configurable": {"thread_id": "temp"}}
+        
+        # Process through workflow
+        events = workflow.stream(initial_state.model_dump(), config, stream_mode='values')
+        for event in events:
+            # Get the first assistant message after our input
+            story_messages = event.get("stories", [])
+            if len(story_messages) > 1:  # More than our initial message
+                role, content = get_message_content(story_messages[-1])
+                if role != "user":
+                    # Clean up response by removing text after "user:"
+                    if "user:" in content.lower():
+                        content = content.lower().split("user:")[0]
+                    return content.strip()
+        
+        raise HttpExceptionCustom.internal_server_error("No response generated")
+        
+    except ValueError as e:
+        logger.error(f"Invalid model name: {e}")
+        raise HttpExceptionCustom.bad_request(str(e))
+    except Exception as e:
+        logger.error(f"Error generating response from prompt: {e}")
+        raise HttpExceptionCustom.internal_server_error
 
 def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> List[Message]:
     """Process a user message through the LLM workflow and return new messages."""

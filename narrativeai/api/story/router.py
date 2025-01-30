@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 import logging
 
 from ..dependencies import GenericOKResponse, common_pagination_parameters, HttpExceptionCustom
-from .schema import ListStoryResponseModel, StoryCreateRequestModel, StoryMessageModel, StoryModel, StoryStateModel, WriteRequestModel, StoryCreateResponseModel
-from .services import create_new_story, get_story_message, list_stories_response, write_story_message, get_story_response
+from .schema import ListStoryResponseModel, StoryCreateRequestModel, StoryMessageModel, StoryModel, StoryStateModel, WriteFromPromptRequestModel, WriteFromPromptResponseModel, WriteRequestModel, StoryCreateResponseModel
+from .services import create_new_story, get_story_message, list_stories_response, write_response_from_prompt, write_story_message, get_story_response
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +66,11 @@ def write_story(story_id: str, request: WriteRequestModel):
         raise HttpExceptionCustom.not_found
     
     return StoryMessageModel(messages=new_messages)
+
+@router.post("/write_from_prompt", response_model=WriteFromPromptResponseModel)
+def write_from_prompt(request: WriteFromPromptRequestModel):
+    """Write from prompt."""
+    story = request.story
+    model = request.model
+    new_message = write_response_from_prompt(story, model)
+    return WriteFromPromptResponseModel(next_story=new_message)
