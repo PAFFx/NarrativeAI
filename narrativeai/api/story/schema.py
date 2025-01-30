@@ -32,6 +32,7 @@ class StoryStateModel(BaseModel):
     longterm_plots: List[str]
     guidelines: List[str]
     requested_act: Optional[str]
+    conseq_longterm_count: int = 0  # Track consecutive longterm plotter invocations
     updated_at: datetime = None
 
     class Config:
@@ -45,6 +46,7 @@ class StoryMessageModel(BaseModel):
 class WriteRequestModel(BaseModel):
     """Model for write request body."""
     message: str
+    model: str | None = "gpt-4o"  # Available models: gpt-4o, claude-3-sonnet
 
 class StoryCreateResponseModel(BaseModel):
     """Response model for story creation."""

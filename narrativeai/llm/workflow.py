@@ -3,18 +3,28 @@ from .agents.writer_agent import WriterAgent
 from .agents.longterm_plotter_agent import LongTermPlotterAgent
 from .agents.narrative_agent import NarrativeAgent
 from .agents.tools.neo4j import Neo4jTool
+from .llm import ModelName
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 from langchain_core.runnables.config import RunnableConfig
 from typing_extensions import Literal
-from typing import List
+from typing import List, Dict, Optional
 
 
 class WorkflowBuilder:
-    def __init__(self, genre_list: List[str]):
+    def __init__(
+        self,
+        genre_list: List[str],
+        narrative_model: ModelName = "gpt-4",
+        writer_model: ModelName = "gpt-4",
+        plotter_model: ModelName = "gpt-4"
+    ):
         self.graph_builder = StateGraph(GraphState)
         self.genre_list = genre_list
+        self.narrative_model = narrative_model
+        self.writer_model = writer_model
+        self.plotter_model = plotter_model
         self._setup_agents()
         self._setup_graph()
 
@@ -23,12 +33,22 @@ class WorkflowBuilder:
         #self.graph_tool = Neo4jTool()
         
         # Initialize writer agent with tools
-        self.writer_agent = WriterAgent(genre_list=self.genre_list)
+        self.writer_agent = WriterAgent(
+            genre_list=self.genre_list,
+            model_name=self.writer_model
+        )
 
-        self.longterm_plotter_agent = LongTermPlotterAgent(genre_list=self.genre_list)
+        self.longterm_plotter_agent = LongTermPlotterAgent(
+            genre_list=self.genre_list,
+            model_name=self.plotter_model
+        )
 
         self.narrative_agent_tools = [LongTermPlotterAgent.transfer_to_longterm_plotter]
-        self.narrative_agent = NarrativeAgent(tools=self.narrative_agent_tools, genre_list=self.genre_list)
+        self.narrative_agent = NarrativeAgent(
+            tools=self.narrative_agent_tools,
+            genre_list=self.genre_list,
+            model_name=self.narrative_model
+        )
 
         # Add nodes
         self.graph_builder.add_node("writer", self._writer_node)
@@ -45,18 +65,23 @@ class WorkflowBuilder:
                 requested_act = tool_call["args"].get("act", "")
                 return Command(
                     goto="longterm_plotter",
-                    update={"requested_act": requested_act}
+                    update={"requested_act": requested_act, "conseq_longterm_count": state.get("conseq_longterm_count", 0) + 1 }
                 )
 
         return Command(
             goto="writer",
-            update={"guidelines": [response.content]}
+            update={
+                "guidelines": [response.content],
+                "conseq_longterm_count": 0  # Reset counter when going to writer
+            }
         )
 
     def _writer_node(self, state: GraphState) -> GraphState:
         """Process the input through the writer agent."""
         response = self.writer_agent.invoke(state)
-        return {"stories": [response]}
+        return {
+            "stories": [response],
+        }
     
     def _longterm_plotter_node(self, state: GraphState) -> GraphState:
         """Process the input through the longterm plotter agent with tools."""

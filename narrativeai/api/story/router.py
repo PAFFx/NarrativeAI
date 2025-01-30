@@ -18,7 +18,7 @@ router = APIRouter(
 )
 
 @router.get("", response_model=ListStoryResponseModel)
-async def list_stories(
+def list_stories(
     skip: int = 0,
     limit: int = 10,
     author_firebase_uid: str | None = None
@@ -28,15 +28,15 @@ async def list_stories(
     return ListStoryResponseModel(stories=stories)
 
 @router.post(
-        "/",
+        "",
         status_code=201,
         response_model_exclude_none=True,
         response_model=StoryCreateResponseModel,
 )
-async def post_story(request: StoryCreateRequestModel):
+def post_story(request: StoryCreateRequestModel):
     """Create a new story."""
     try:
-        story_id = await create_new_story(request)
+        story_id = create_new_story(request)
         return StoryCreateResponseModel(story_id=story_id)
     except Exception as e:
         logger.error(f"Error creating story: {e}")
@@ -44,21 +44,24 @@ async def post_story(request: StoryCreateRequestModel):
 
 
 @router.get("/{story_id}", response_model=StoryModel)
-async def get_story(story_id: str):
-    story = await get_story_response(story_id)
+def get_story(story_id: str):
+    story = get_story_response(story_id)
     return story
 
 
 @router.get("/{story_id}/messages", response_model=StoryMessageModel)
-async def get_story_messages(story_id: str):
+def get_story_messages(story_id: str):
     """Get story messages from database."""
-    messages = await get_story_message(story_id)
+    messages = get_story_message(story_id)
     return StoryMessageModel(messages=messages)
 
 @router.post("/{story_id}/write", response_model=StoryMessageModel)
-async def write_story(story_id: str, request: WriteRequestModel):
+def write_story(story_id: str, request: WriteRequestModel):
     """Write to story and process through LLM workflow."""
-    new_messages = await write_story_message(story_id, request.message)
+    if request.model is None:
+        new_messages = write_story_message(story_id, request.message)
+    else:
+        new_messages = write_story_message(story_id, request.message, request.model)
     if new_messages is None:
         raise HttpExceptionCustom.not_found
     

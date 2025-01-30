@@ -48,7 +48,7 @@ def query_list_genre() -> list:
     except InvalidId:
         raise HttpExceptionCustom.bad_request
 
-async def query_story_state(story_id: str) -> dict:
+def query_story_state(story_id: str) -> dict:
     """Get story state from database."""
     logger.info(f"Fetching story state for story {story_id}")
     
@@ -71,7 +71,7 @@ async def query_story_state(story_id: str) -> dict:
         logger.error(f"Error fetching story state: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-async def create_story_state(story_id: str, state: StoryStateModel) -> str:
+def create_story_state(story_id: str, state: StoryStateModel) -> str:
     """Create story state in database."""
     logger.info(f"Creating story state for story {story_id}")
     state_dict = state.model_dump()
@@ -85,7 +85,7 @@ async def create_story_state(story_id: str, state: StoryStateModel) -> str:
         logger.error(f"Error creating story state: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-async def update_story_state(story_id: str, state: StoryStateModel) -> bool:
+def update_story_state(story_id: str, state: StoryStateModel) -> bool:
     """Update story state in database."""
     logger.info(f"Updating story state for story {story_id}")
     
@@ -114,7 +114,7 @@ async def update_story_state(story_id: str, state: StoryStateModel) -> bool:
         logger.error(f"Error updating story state: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-async def query_story(story_id: str) -> dict:
+def query_story(story_id: str) -> dict:
     """Get single story from database."""
     logger.info(f"Fetching story {story_id}")
     
@@ -137,7 +137,7 @@ async def query_story(story_id: str) -> dict:
         logger.error(f"Error fetching story: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-async def create_story_doc(request: StoryCreateRequestModel) -> str:
+def create_story_doc(request: StoryCreateRequestModel) -> str:
     """Create a new story document."""
     logger.info(f"Creating story document for story {request.title}")
     
@@ -154,7 +154,7 @@ async def create_story_doc(request: StoryCreateRequestModel) -> str:
         }
         
         # Insert story
-        result = await db_client.story_collection.insert_one(story_data)
+        result =  db_client.story_collection.insert_one(story_data)
         if not result.inserted_id:
             logger.error("Failed to insert story document")
             return None

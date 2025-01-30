@@ -13,3 +13,4 @@ class GraphState(TypedDict):
     longterm_plots: Annotated[List[str], add_messages]
     guidelines: Annotated[List[str], add_messages]
     requested_act: Optional[str]
+    conseq_longterm_count: int  # Track consecutive longterm plotter invocations

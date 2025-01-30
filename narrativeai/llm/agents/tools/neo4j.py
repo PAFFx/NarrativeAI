@@ -6,8 +6,8 @@ from langchain_neo4j import GraphCypherQAChain
 from langchain.prompts import ChatPromptTemplate
 from langchain.tools import BaseTool
 from pydantic import Field, PrivateAttr
-from ...utils import get_model
 from ...models import Neo4jQueryResult
+from ...llm import get_model, ModelName
 
 load_dotenv()
 
@@ -41,7 +41,7 @@ class Neo4jTool(BaseTool):
             username=self._username,
             password=self._password
         )
-        self._llm = get_model("gpt-4")
+        self._llm = get_model(model_name="gpt-4")
         self._qa_chain = self._setup_qa_chain()
 
     def _setup_qa_chain(self) -> GraphCypherQAChain:

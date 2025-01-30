@@ -24,7 +24,8 @@ def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, config: 
         "stories": [("user", user_input)],
         "longterm_plots": [],
         "guidelines": [],
-        "requested_act": None
+        "requested_act": None,
+        "conseq_longterm_count": 0
     }
     
     # Keep track of what we've seen
@@ -58,7 +59,13 @@ def stream_graph_updates(user_input: str, workflow: CompiledStateGraph, config: 
 def main():
     config = {"configurable": {"thread_id": "1"}}
     genre_list = ["mecha", "war", "sci-fi"]  # Example genre list
-    workflow = WorkflowBuilder(genre_list=genre_list).compile()
+    model_name = "claude-3-5-sonnet-20241022"
+    workflow = WorkflowBuilder(
+        genre_list=genre_list,
+        narrative_model=model_name,
+        writer_model=model_name,
+        plotter_model=model_name
+    ).compile()
 
     while True:
         try:
