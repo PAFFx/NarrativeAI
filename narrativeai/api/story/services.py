@@ -11,7 +11,7 @@ from .database import (
     query_story
 )
 
-from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel
+from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel, StoryFromTemplateRequestModel
 from ...llm.states import Message
 from ...llm.workflow import WorkflowBuilder
 from ...llm.llm import get_model_name
@@ -21,6 +21,7 @@ import logging
 from typing import List, Tuple
 from ..user.database import get_user_by_firebase_uid
 from langchain.prompts import ChatPromptTemplate
+from ..template.services import get_template_response
 
 logger = logging.getLogger(__name__)
 
@@ -265,5 +266,51 @@ def create_new_story(request: StoryCreateRequestModel) -> str:
         logger.error(f"Failed to initialize story state for story {story_id}")
         raise HttpExceptionCustom.internal_server_error
 
+    return str(story_id)
+
+def create_story_from_template(request: StoryFromTemplateRequestModel) -> str:
+    """Create a new story from template."""
+    # Get template
+    template = get_template_response(request.template_id)
+    if template is None:
+        raise HttpExceptionCustom.not_found("Template not found")
+    
+    # Replace parameters in initial story
+    initial_story = template.initial_story
+    for param_name, param_value in request.params.items():
+        placeholder = "${" + param_name + "}"
+        initial_story = initial_story.replace(placeholder, param_value)
+    
+    # Create story document using StoryCreateRequestModel
+    story_request = StoryCreateRequestModel(
+        title=f"{template.title} (from template)",
+        description=template.description,
+        genre_ids=[genre.id for genre in template.genre_list],
+        cover_image=template.cover_image,
+        author_firebase_uid=request.author_firebase_uid
+    )
+    
+    story_id = create_story_doc(story_request)
+    if not story_id:
+        logger.error("Failed to create story document")
+        raise HttpExceptionCustom.internal_server_error
+    
+    # Initialize story state with the processed initial story
+    state_model = StoryStateModel(
+        story_id=str(story_id),
+        stories=[("user", initial_story)],
+        longterm_plots=[],
+        guidelines=[],
+        requested_act=None,
+        conseq_longterm_count=0,
+        updated_at=datetime.utcnow()
+    )
+    
+    # Save story state
+    story_state_id = create_story_state(story_id, state_model)
+    if not story_state_id:
+        logger.error(f"Failed to initialize story state for story {story_id}")
+        raise HttpExceptionCustom.internal_server_error
+    
     return str(story_id)
  

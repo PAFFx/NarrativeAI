@@ -3,7 +3,7 @@ from typing import List, Optional, Dict
 import re
 
 from .database import create_template, get_template, list_templates
-from .schema import TemplateCreateRequestModel, TemplateModel
+from .schema import TemplateCreateRequestModel, TemplateModel, TemplateListItemModel
 from ..genre.database import query_list_genres
 from ..genre.schema import GenreModel
 from ..user.database import get_user_by_firebase_uid
@@ -76,8 +76,8 @@ def list_templates_response(
     skip: int = 0,
     limit: int = 10,
     author_firebase_uid: Optional[str] = None
-) -> List[TemplateModel]:
-    """List templates with optional author filter."""
+) -> List[TemplateListItemModel]:
+    """List templates with optional author filter, returning only essential fields."""
     templates = list_templates(skip, limit, author_firebase_uid)
     
     # Create a lookup dictionary for faster genre name retrieval
@@ -85,21 +85,30 @@ def list_templates_response(
     genre_lookup = {genre["id"]: genre["name"] for genre in genre_lists}
     
     # Process each template
+    simplified_templates = []
     for template in templates:
         # Process genre information
         genre_list = []
         for genre_id in template["genre_list"]:
             genre_name = genre_lookup.get(genre_id, "Unknown")
             genre_list.append(GenreModel(id=genre_id, name=genre_name))
-        template["genre_list"] = genre_list
         
         # Get author display name
+        author = None
         if "author_firebase_uid" in template:
             user = get_user_by_firebase_uid(template["author_firebase_uid"])
             if user:
-                template["author"] = user.get("display_name", None)
-            else:
-                template["author"] = None
-            del template["author_firebase_uid"]
+                author = user.get("display_name", None)
+        
+        # Create simplified template item
+        simplified_template = TemplateListItemModel(
+            id=template["id"],
+            title=template["title"],
+            description=template["description"],
+            genre_list=genre_list,
+            cover_image=template.get("cover_image"),
+            author=author
+        )
+        simplified_templates.append(simplified_template)
     
-    return [TemplateModel(**template) for template in templates] 
+    return simplified_templates 

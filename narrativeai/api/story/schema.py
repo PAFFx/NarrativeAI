@@ -1,11 +1,9 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from ...llm.states import Message
 
-class GenreModel(BaseModel):
-    id: str
-    name: str
+from ..genre.schema import GenreModel
 
 class StoryModel(BaseModel):
     id: str
@@ -60,3 +58,9 @@ class WriteFromPromptRequestModel(BaseModel):
 class WriteFromPromptResponseModel(BaseModel):
     """Response model for write from prompt."""
     next_story: str
+
+class StoryFromTemplateRequestModel(BaseModel):
+    """Model for creating story from template."""
+    template_id: str
+    params: Dict[str, str]
+    author_firebase_uid: Optional[str] = None

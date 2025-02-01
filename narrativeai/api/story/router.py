@@ -2,8 +2,27 @@ from fastapi import APIRouter, Depends, HTTPException
 import logging
 
 from ..dependencies import GenericOKResponse, common_pagination_parameters, HttpExceptionCustom
-from .schema import ListStoryResponseModel, StoryCreateRequestModel, StoryMessageModel, StoryModel, StoryStateModel, WriteFromPromptRequestModel, WriteFromPromptResponseModel, WriteRequestModel, StoryCreateResponseModel
-from .services import create_new_story, get_story_message, list_stories_response, write_response_from_prompt, write_story_message, get_story_response
+from .schema import (
+    ListStoryResponseModel,
+    StoryCreateRequestModel,
+    StoryMessageModel,
+    StoryModel,
+    StoryStateModel,
+    WriteFromPromptRequestModel,
+    WriteFromPromptResponseModel,
+    WriteRequestModel,
+    StoryCreateResponseModel,
+    StoryFromTemplateRequestModel
+)
+from .services import (
+    create_new_story,
+    get_story_message,
+    list_stories_response,
+    write_response_from_prompt,
+    write_story_message,
+    get_story_response,
+    create_story_from_template
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +36,7 @@ router = APIRouter(
     ],
 )
 
-@router.get("", response_model=ListStoryResponseModel)
+@router.get("/", response_model=ListStoryResponseModel)
 def list_stories(
     skip: int = 0,
     limit: int = 10,
@@ -28,7 +47,7 @@ def list_stories(
     return ListStoryResponseModel(stories=stories)
 
 @router.post(
-        "",
+        "/",
         status_code=201,
         response_model_exclude_none=True,
         response_model=StoryCreateResponseModel,
@@ -74,3 +93,18 @@ def write_from_prompt(request: WriteFromPromptRequestModel):
     model = request.model
     new_message = write_response_from_prompt(story, model)
     return WriteFromPromptResponseModel(next_story=new_message)
+
+@router.post(
+    "/from_template",
+    status_code=201,
+    response_model=StoryCreateResponseModel,
+)
+def create_from_template(request: StoryFromTemplateRequestModel):
+    """Create a new story from template."""
+    try:
+        logger.info(f"Creating story from template: {request}")
+        story_id = create_story_from_template(request)
+        return StoryCreateResponseModel(story_id=story_id)
+    except Exception as e:
+        logger.error(f"Error creating story from template: {e}")
+        raise HttpExceptionCustom.internal_server_error
