@@ -266,3 +266,4 @@ def create_new_story(request: StoryCreateRequestModel) -> str:
         raise HttpExceptionCustom.internal_server_error
 
     return str(story_id)
+ 
