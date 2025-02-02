@@ -1,3 +1,4 @@
+import logging
 from .states import GraphState
 from .agents.writer_agent import WriterAgent
 from .agents.longterm_plotter_agent import LongTermPlotterAgent
@@ -10,6 +11,8 @@ from langgraph.types import Command
 from langchain_core.runnables.config import RunnableConfig
 from typing_extensions import Literal
 from typing import List, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowBuilder:
@@ -57,37 +60,77 @@ class WorkflowBuilder:
 
     def _narrative_node(self, state: GraphState) -> Command[Literal["writer", "longterm_plotter", "__end__"]]:
         """Process the input through the narrative agent with tools."""
-        response = self.narrative_agent.invoke(state)
-        if len(response.tool_calls) > 0:
-            tool_call = response.tool_calls[-1]
-            if tool_call["name"] == "transfer_to_longterm_plotter":
-                # Extract the act from the tool call arguments
-                requested_act = tool_call["args"].get("act", "")
-                return Command(
-                    goto="longterm_plotter",
-                    update={"requested_act": requested_act, "conseq_longterm_count": state.get("conseq_longterm_count", 0) + 1 }
-                )
+        try:
+            response = self.narrative_agent.invoke(state)
+            
+            # Check for tool calls in both response.tool_calls and additional_kwargs
+            tool_calls = []
 
-        return Command(
-            goto="writer",
-            update={
-                "guidelines": [response.content],
-                "conseq_longterm_count": 0  # Reset counter when going to writer
-            }
-        )
+            logger.info(f"Response: {response}")
+            
+            # Handle Anthropic-style tool calls (directly in tool_calls)
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                tool_calls.extend(response.tool_calls)
+                
+            # Handle OpenAI-style tool calls (in additional_kwargs)
+            if hasattr(response, 'additional_kwargs') and response.additional_kwargs.get('tool_calls'):
+                tool_calls.extend(response.additional_kwargs['tool_calls'])
+
+            if tool_calls:
+                # Get the last tool call
+                tool_call = tool_calls[-1]
+                
+                # Handle both OpenAI and Anthropic tool call formats
+                if tool_call.get("name") == "transfer_to_longterm_plotter" or \
+                   (tool_call.get("function", {}).get("name") == "transfer_to_longterm_plotter"):
+
+                    # Extract act from either format
+                    act = ""
+                    if "args" in tool_call:  # Anthropic format
+                        act = tool_call["args"].get("act", "")
+                    elif "function" in tool_call:  # OpenAI format
+                        import json
+                        args = json.loads(tool_call["function"]["arguments"])
+                        act = args.get("act", "")
+                    
+                    return Command(
+                        goto="longterm_plotter",
+                        update={"requested_act": act, "conseq_longterm_count": state.get("conseq_longterm_count", 0) + 1}
+                    )
+
+            # If no tool calls or not the expected tool, proceed to writer
+            content = response.content if response.content else ""
+            return Command(
+                goto="writer",
+                update={
+                    "guidelines": [content],
+                    "conseq_longterm_count": 0  # Reset counter when going to writer
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error in narrative node: {str(e)}")
+            return Command(goto="__end__")
 
     def _writer_node(self, state: GraphState) -> GraphState:
         """Process the input through the writer agent."""
-        response = self.writer_agent.invoke(state)
-        return {
-            "stories": [response],
-        }
+        try:
+            response = self.writer_agent.invoke(state)
+            return {
+                "stories": [response],
+            }
+        except Exception as e:
+            logger.error(f"Error in writer node: {str(e)}")
+            return Command(goto="__end__")
     
     def _longterm_plotter_node(self, state: GraphState) -> GraphState:
         """Process the input through the longterm plotter agent with tools."""
-        runnable_config = RunnableConfig(recursion_limit=3) #Only 3 discussions are allowed per request
-        response = self.longterm_plotter_agent.invoke(state, runnable_config)
-        return {"longterm_plots": [response]}
+        try:
+            runnable_config = RunnableConfig(recursion_limit=3) #Only 3 discussions are allowed per request
+            response = self.longterm_plotter_agent.invoke(state, runnable_config)
+            return {"longterm_plots": [response]}
+        except Exception as e:
+            logger.error(f"Error in longterm plotter node: {str(e)}")
+            return Command(goto="__end__")
 
     def _setup_graph(self):
         """Setup the graph flow with tool conditions."""

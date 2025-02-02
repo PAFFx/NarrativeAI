@@ -107,7 +107,19 @@ class LongTermPlotterAgent:
         return
 
     def invoke(self, state: Dict, runnable_config: RunnableConfig = None) -> str:
-        """Process user input and generate plot-focused responses."""
+        """
+        Process user input and generate plot-focused responses.
+        
+        Args:
+            state: The current state dictionary
+            runnable_config: Optional configuration for the runnable
+            
+        Returns:
+            A string containing the plot-focused response
+            
+        Raises:
+            Exception: If there is an error during processing
+        """
         try:
             context = {
                 "genre_list": ", ".join(self.genre_list),
@@ -121,7 +133,8 @@ class LongTermPlotterAgent:
             
             # Extract only the Summarizer's messages
             summarizer_messages = self._extract_summarizer_messages(response.content)
-            return AIMessage(content=summarizer_messages)
+            return summarizer_messages
             
         except Exception as e:
-            return AIMessage(content=f"LongTermPlotterAgent: I apologize, but I encountered an error while processing your input: {str(e)}")
+            logger.error(f"Error in LongTermPlotterAgent: {str(e)}")
+            raise Exception(f"LongTermPlotterAgent failed: {str(e)}")

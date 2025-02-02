@@ -12,6 +12,7 @@ class StoryModel(BaseModel):
     genre_list: list[GenreModel]
     cover_image: str | None = None
     author: str | None = None  # This will be the display name
+    template_id: str | None = None
 
 class StoryCreateRequestModel(BaseModel):
     title: str
@@ -19,6 +20,7 @@ class StoryCreateRequestModel(BaseModel):
     genre_ids: list[str]
     cover_image: str | None = None
     author_firebase_uid: str  # This is the Firebase UID for storage
+    template_id: str | None = None
 
 class ListStoryResponseModel(BaseModel):
     stories: list[StoryModel]

@@ -196,50 +196,55 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
         new_messages = []
         last_story_len = len(state.stories)
         
-        events = workflow.stream(state.model_dump(), config, stream_mode='values')
-        for event in events:
-            last_event = event
+        try:
+            events = workflow.stream(state.model_dump(), config, stream_mode='values')
+            for event in events:
+                last_event = event
 
-        story_messages = last_event.get("stories", [])
-        if story_messages and len(story_messages) > last_story_len:
-            role, content = get_message_content(story_messages[-1])
-            if role != "user":
-                new_messages.append((role, content))
-            last_story_len = len(story_messages)
-        
-        # Convert messages to tuples for state model
-        converted_messages = []
-        for msg in story_messages:
-            role, content = get_message_content(msg)
-            converted_messages.append((role, content))
+            story_messages = last_event.get("stories", [])
+            if story_messages and len(story_messages) > last_story_len:
+                role, content = get_message_content(story_messages[-1])
+                if role != "user":
+                    new_messages.append((role, content))
+                last_story_len = len(story_messages)
+            
+            # Convert messages to tuples for state model
+            converted_messages = []
+            for msg in story_messages:
+                role, content = get_message_content(msg)
+                converted_messages.append((role, content))
 
-        guidelines = last_event.get("guidelines", [])
-        guideline_contents = [g.content for g in guidelines]
+            guidelines = last_event.get("guidelines", [])
+            guideline_contents = [g.content for g in guidelines]
 
-        longterm_plots = last_event.get("longterm_plots", [])
-        longterm_plot_contents = [p.content for p in longterm_plots]
-        
-        # Save final state
-        state_model = StoryStateModel(
-            story_id=story_id,
-            stories=converted_messages,
-            longterm_plots=longterm_plot_contents,
-            guidelines=guideline_contents,
-            requested_act=last_event.get("requested_act"),
-            conseq_longterm_count=last_event.get("conseq_longterm_count", 0),
-            updated_at=datetime.utcnow()
-        )
-        update_story_state(story_id, state_model)
-        
-        # Return only the new messages
-        return new_messages
+            longterm_plots = last_event.get("longterm_plots", [])
+            longterm_plot_contents = [p.content for p in longterm_plots]
+            
+            # Save final state
+            state_model = StoryStateModel(
+                story_id=story_id,
+                stories=converted_messages,
+                longterm_plots=longterm_plot_contents,
+                guidelines=guideline_contents,
+                requested_act=last_event.get("requested_act"),
+                conseq_longterm_count=last_event.get("conseq_longterm_count", 0),
+                updated_at=datetime.utcnow()
+            )
+            update_story_state(story_id, state_model)
+            
+            # Return only the new messages
+            return new_messages
+            
+        except Exception as e:
+            logger.error(f"Agent error in workflow: {e}")
+            raise HttpExceptionCustom.internal_server_error("An error occurred in the story generation process")
         
     except ValueError as e:
         logger.error(f"Invalid model name: {e}")
         raise HttpExceptionCustom.bad_request(str(e))
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        raise HttpExceptionCustom.internal_server_error
+        raise HttpExceptionCustom.internal_server_error("An error occurred while processing the message")
 
 def create_new_story(request: StoryCreateRequestModel) -> str:
     """Create a new story. Also initializes the story state."""
@@ -283,11 +288,12 @@ def create_story_from_template(request: StoryFromTemplateRequestModel) -> str:
     
     # Create story document using StoryCreateRequestModel
     story_request = StoryCreateRequestModel(
-        title=f"{template.title} (from template)",
+        title=template.title,
         description=template.description,
         genre_ids=[genre.id for genre in template.genre_list],
         cover_image=template.cover_image,
-        author_firebase_uid=request.author_firebase_uid
+        author_firebase_uid=request.author_firebase_uid,
+        template_id=request.template_id
     )
     
     story_id = create_story_doc(story_request)

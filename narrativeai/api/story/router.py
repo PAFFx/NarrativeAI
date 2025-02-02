@@ -36,7 +36,7 @@ router = APIRouter(
     ],
 )
 
-@router.get("/", response_model=ListStoryResponseModel)
+@router.get("/", response_model=ListStoryResponseModel, response_model_exclude_none=True)
 def list_stories(
     skip: int = 0,
     limit: int = 10,

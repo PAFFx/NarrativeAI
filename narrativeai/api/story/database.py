@@ -149,6 +149,7 @@ def create_story_doc(request: StoryCreateRequestModel) -> str:
             "genre_list": [ObjectId(genre_id) for genre_id in request.genre_ids],
             "cover_image": request.cover_image,
             "author_firebase_uid": request.author_firebase_uid,
+            "template_id": request.template_id,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
