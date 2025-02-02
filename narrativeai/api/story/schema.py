@@ -66,3 +66,8 @@ class StoryFromTemplateRequestModel(BaseModel):
     template_id: str
     params: Dict[str, str]
     author_firebase_uid: Optional[str] = None
+
+class StoryUpdateRequestModel(BaseModel):
+    """Model for updating story details."""
+    title: Optional[str] = None
+    description: Optional[str] = None

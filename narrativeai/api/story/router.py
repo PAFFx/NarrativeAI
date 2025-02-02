@@ -12,7 +12,8 @@ from .schema import (
     WriteFromPromptResponseModel,
     WriteRequestModel,
     StoryCreateResponseModel,
-    StoryFromTemplateRequestModel
+    StoryFromTemplateRequestModel,
+    StoryUpdateRequestModel
 )
 from .services import (
     create_new_story,
@@ -21,7 +22,9 @@ from .services import (
     write_response_from_prompt,
     write_story_message,
     get_story_response,
-    create_story_from_template
+    create_story_from_template,
+    delete_story_response,
+    update_story_response
 )
 
 logger = logging.getLogger(__name__)
@@ -107,4 +110,22 @@ def create_from_template(request: StoryFromTemplateRequestModel):
         return StoryCreateResponseModel(story_id=story_id)
     except Exception as e:
         logger.error(f"Error creating story from template: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.delete("/{story_id}", response_model=bool)
+def delete_story(story_id: str):
+    """Delete a story and its state."""
+    try:
+        return delete_story_response(story_id)
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.patch("/{story_id}", response_model=bool)
+def update_story(story_id: str, request: StoryUpdateRequestModel):
+    """Update story details."""
+    try:
+        return update_story_response(story_id, request)
+    except Exception as e:
+        logger.error(f"Error updating story: {e}")
         raise HttpExceptionCustom.internal_server_error

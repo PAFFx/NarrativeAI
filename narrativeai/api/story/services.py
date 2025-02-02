@@ -8,10 +8,12 @@ from .database import (
     query_list_genre,
     query_story_state,
     update_story_state,
-    query_story
+    query_story,
+    delete_story,
+    update_story
 )
 
-from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel, StoryFromTemplateRequestModel
+from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel, StoryFromTemplateRequestModel, StoryUpdateRequestModel
 from ...llm.states import Message
 from ...llm.workflow import WorkflowBuilder
 from ...llm.llm import get_model_name
@@ -319,4 +321,43 @@ def create_story_from_template(request: StoryFromTemplateRequestModel) -> str:
         raise HttpExceptionCustom.internal_server_error
     
     return str(story_id)
+
+def delete_story_response(story_id: str) -> bool:
+    """Delete a story and its state."""
+    logger.info(f"Deleting story {story_id}")
+    
+    # Check if story exists
+    story = query_story(story_id)
+    if not story:
+        raise HttpExceptionCustom.not_found("Story not found")
+    
+    # Delete story and its state
+    success = delete_story(story_id)
+    if not success:
+        raise HttpExceptionCustom.internal_server_error("Failed to delete story")
+    
+    return True
+
+def update_story_response(story_id: str, request: StoryUpdateRequestModel) -> bool:
+    """Update story details."""
+    logger.info(f"Updating story {story_id}")
+    
+    # Check if story exists
+    story = query_story(story_id)
+    if not story:
+        raise HttpExceptionCustom.not_found("Story not found")
+    
+    # Convert request model to dict and remove None values
+    update_data = {k: v for k, v in request.model_dump().items() if v is not None}
+    
+    if not update_data:
+        logger.warning("No fields to update")
+        return True
+    
+    # Update story
+    success = update_story(story_id, update_data)
+    if not success:
+        raise HttpExceptionCustom.internal_server_error("Failed to update story")
+    
+    return True
  
