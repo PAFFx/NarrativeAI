@@ -65,7 +65,7 @@ class LLMFactory:
     """Factory for creating LLM instances."""
     
     @staticmethod
-    def create_llm(model_name: ModelName, **kwargs) -> Any:
+    def create_llm(model_name: ModelName, **kwargs) -> ChatAnthropic | ChatOpenAI:
         """Create an LLM instance based on model name and configuration."""
         config = LLMConfig.get_config(model_name)
         config.update(kwargs)  # Override defaults with provided kwargs

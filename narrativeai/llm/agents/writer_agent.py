@@ -101,7 +101,7 @@ class WriterAgent:
         
         return trimmed_messages
 
-    def invoke(self, state: Dict) -> str:
+    async def ainvoke(self, state: Dict) -> str:
         """
         Process user input and generate a collaborative response for story development.
         
@@ -132,14 +132,14 @@ class WriterAgent:
             }
             
             # Generate response using the co-writing prompt
-            response = self.llm.invoke(self.co_writing_prompt.format_messages(**context))
+            response = await self.llm.ainvoke(self.co_writing_prompt.format_messages(**context))
             
             # Clean up response by removing text after "user:"
             if isinstance(response, AIMessage):
                 content = response.content
                 if "user:" in content.lower():
                     content = content.lower().split("user:")[0]
-                response = AIMessage(content=content.strip())
+                response = content=content.strip()
             
             return response
             

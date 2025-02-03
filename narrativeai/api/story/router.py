@@ -80,12 +80,12 @@ def get_story_messages(story_id: str):
     return StoryMessageModel(messages=messages)
 
 @router.post("/{story_id}/write", response_model=StoryMessageModel)
-def write_story(story_id: str, request: WriteRequestModel):
+async def write_story(story_id: str, request: WriteRequestModel):
     """Write to story and process through LLM workflow."""
     if request.model is None:
-        new_messages = write_story_message(story_id, request.message)
+        new_messages = await write_story_message(story_id, request.message)
     else:
-        new_messages = write_story_message(story_id, request.message, request.model)
+        new_messages = await write_story_message(story_id, request.message, request.model)
     if new_messages is None:
         raise HttpExceptionCustom.not_found
     

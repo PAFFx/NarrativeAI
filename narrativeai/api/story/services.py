@@ -152,16 +152,16 @@ def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
                         content = content.lower().split("user:")[0]
                     return content.strip()
         
-        raise HttpExceptionCustom.internal_server_error("No response generated")
+        raise HttpExceptionCustom.internal_server_error
         
     except ValueError as e:
         logger.error(f"Invalid model name: {e}")
-        raise HttpExceptionCustom.bad_request(str(e))
+        raise HttpExceptionCustom.bad_request
     except Exception as e:
         logger.error(f"Error generating response from prompt: {e}")
         raise HttpExceptionCustom.internal_server_error
 
-def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> List[Message]:
+async def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> List[Message]:
     """Process a user message through the LLM workflow and return new messages."""
     logger.info(f"Processing message for story {story_id}")
 
@@ -189,8 +189,8 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
         workflow = WorkflowBuilder(
             genre_list=genre_names, 
             narrative_model=model_name,
-            writer_model=model_name,
-            plotter_model=model_name,
+            writer_model="gpt-4o",
+            plotter_model="gpt-4o",
         ).compile()
         config = {"configurable": {"thread_id": story_id}}
         
@@ -199,11 +199,9 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
         last_story_len = len(state.stories)
         
         try:
-            events = workflow.stream(state.model_dump(), config, stream_mode='values')
-            for event in events:
-                last_event = event
+            output = await workflow.ainvoke(state.model_dump(), config)
 
-            story_messages = last_event.get("stories", [])
+            story_messages = output.get("stories", [])
             if story_messages and len(story_messages) > last_story_len:
                 role, content = get_message_content(story_messages[-1])
                 if role != "user":
@@ -216,10 +214,10 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
                 role, content = get_message_content(msg)
                 converted_messages.append((role, content))
 
-            guidelines = last_event.get("guidelines", [])
+            guidelines = output.get("guidelines", [])
             guideline_contents = [g.content for g in guidelines]
 
-            longterm_plots = last_event.get("longterm_plots", [])
+            longterm_plots = output.get("longterm_plots", [])
             longterm_plot_contents = [p.content for p in longterm_plots]
             
             # Save final state
@@ -228,8 +226,8 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
                 stories=converted_messages,
                 longterm_plots=longterm_plot_contents,
                 guidelines=guideline_contents,
-                requested_act=last_event.get("requested_act"),
-                conseq_longterm_count=last_event.get("conseq_longterm_count", 0),
+                requested_act=output.get("requested_act"),
+                conseq_longterm_count=output.get("conseq_longterm_count", 0),
                 updated_at=datetime.utcnow()
             )
             update_story_state(story_id, state_model)
@@ -239,14 +237,14 @@ def write_story_message(story_id: str, message: str, model: str = "gpt-4o") -> L
             
         except Exception as e:
             logger.error(f"Agent error in workflow: {e}")
-            raise HttpExceptionCustom.internal_server_error("An error occurred in the story generation process")
+            raise HttpExceptionCustom.internal_server_error
         
     except ValueError as e:
         logger.error(f"Invalid model name: {e}")
-        raise HttpExceptionCustom.bad_request(str(e))
+        raise HttpExceptionCustom.bad_request
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        raise HttpExceptionCustom.internal_server_error("An error occurred while processing the message")
+        raise HttpExceptionCustom.internal_server_error
 
 def create_new_story(request: StoryCreateRequestModel) -> str:
     """Create a new story. Also initializes the story state."""
@@ -280,7 +278,7 @@ def create_story_from_template(request: StoryFromTemplateRequestModel) -> str:
     # Get template
     template = get_template_response(request.template_id)
     if template is None:
-        raise HttpExceptionCustom.not_found("Template not found")
+        raise HttpExceptionCustom.not_found
     
     # Replace parameters in initial story
     initial_story = template.initial_story

@@ -106,7 +106,7 @@ class LongTermPlotterAgent:
         # as a way for LLM to signal that it needs to hand off to another agent
         return
 
-    def invoke(self, state: Dict, runnable_config: RunnableConfig = None) -> str:
+    async def ainvoke(self, state: Dict, runnable_config: RunnableConfig = None) -> str:
         """
         Process user input and generate plot-focused responses.
         
@@ -129,7 +129,7 @@ class LongTermPlotterAgent:
             }
             
             # Generate response using the plotting prompt
-            response = self.llm.invoke(self.plotting_prompt.format_messages(**context), runnable_config)
+            response = await self.llm.ainvoke(self.plotting_prompt.format_messages(**context), runnable_config)
             
             # Extract only the Summarizer's messages
             summarizer_messages = self._extract_summarizer_messages(response.content)

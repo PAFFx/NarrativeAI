@@ -8,6 +8,7 @@ from .llm import ModelName
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
+from langchain.schema import AIMessage, SystemMessage, HumanMessage
 from langchain_core.runnables.config import RunnableConfig
 from typing_extensions import Literal
 from typing import List, Dict, Optional
@@ -58,16 +59,14 @@ class WorkflowBuilder:
         self.graph_builder.add_node("longterm_plotter", self._longterm_plotter_node)
         self.graph_builder.add_node("narrative", self._narrative_node)
 
-    def _narrative_node(self, state: GraphState) -> Command[Literal["writer", "longterm_plotter", "__end__"]]:
+    async def _narrative_node(self, state: GraphState) -> Command[Literal["writer", "longterm_plotter", "__end__"]]:
         """Process the input through the narrative agent with tools."""
         try:
-            response = self.narrative_agent.invoke(state)
+            response = await self.narrative_agent.ainvoke(state)
             
             # Check for tool calls in both response.tool_calls and additional_kwargs
             tool_calls = []
 
-            logger.info(f"Response: {response}")
-            
             # Handle Anthropic-style tool calls (directly in tool_calls)
             if hasattr(response, 'tool_calls') and response.tool_calls:
                 tool_calls.extend(response.tool_calls)
@@ -111,22 +110,22 @@ class WorkflowBuilder:
             logger.error(f"Error in narrative node: {str(e)}")
             return Command(goto="__end__")
 
-    def _writer_node(self, state: GraphState) -> GraphState:
+    async def _writer_node(self, state: GraphState) -> GraphState:
         """Process the input through the writer agent."""
         try:
-            response = self.writer_agent.invoke(state)
+            response = await self.writer_agent.ainvoke(state)
             return {
-                "stories": [response],
+                "stories": [AIMessage(content=response)],
             }
         except Exception as e:
             logger.error(f"Error in writer node: {str(e)}")
             return Command(goto="__end__")
     
-    def _longterm_plotter_node(self, state: GraphState) -> GraphState:
+    async def _longterm_plotter_node(self, state: GraphState) -> GraphState:
         """Process the input through the longterm plotter agent with tools."""
         try:
             runnable_config = RunnableConfig(recursion_limit=3) #Only 3 discussions are allowed per request
-            response = self.longterm_plotter_agent.invoke(state, runnable_config)
+            response = await self.longterm_plotter_agent.ainvoke(state, runnable_config)
             return {"longterm_plots": [response]}
         except Exception as e:
             logger.error(f"Error in longterm plotter node: {str(e)}")

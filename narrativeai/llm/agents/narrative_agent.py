@@ -54,7 +54,7 @@ class NarrativeAgent:
             [Steps to plan story]:
             1. Read the genre and plot's history.
             2. Consider the sequence of acts. You can continue current act or move to the next act based on the previous plots.
-                Select the act based on the previous plots.
+                Select the act based on the previous plots. Don't move to the next act if the current act is not complete.
             3. Determine the scene's tone based on provided list of tones.
             4. Write guidelines that continue the story forward. 
                * An act can have multiple scenes so continue the story forward don't stop at the same guidelines for the same act.
@@ -149,7 +149,7 @@ class NarrativeAgent:
         # Convert back to string format
         return format_conversation([msg for msg in trimmed_messages if msg.content.strip()])
 
-    def invoke(self, state: Dict) -> Dict:
+    async def ainvoke(self, state: Dict) -> Dict:
         """
         Process user input and generate a collaborative plot guidelines for story development.
         
@@ -183,7 +183,7 @@ class NarrativeAgent:
 
             # Generate response using the co-writing prompt
             llm = self.llm.bind_tools(self.tools) if state["conseq_longterm_count"] < 1 else self.llm
-            response = llm.invoke(self.co_writing_prompt.format_messages(**context))
+            response = await llm.ainvoke(self.co_writing_prompt.format_messages(**context))
             
             # Clean and validate response
             return response
