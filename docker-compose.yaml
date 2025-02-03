@@ -1,9 +1,13 @@
+version: '3.8'
+
 services:
-  mongo:
-    image: mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: verystrongrootpassword
+  web:
+    build: .
     ports:
-      - 27017:27017
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+      - FASTAPI_ENV=development
+    command: poetry run uvicorn narrativeai.api.api:app --host 0.0.0.0 --port 8000 --reload

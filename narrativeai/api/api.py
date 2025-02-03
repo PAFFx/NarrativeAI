@@ -46,4 +46,10 @@ def read_root():
 def start_dev_server():
     log_config = uvicorn.config.LOGGING_CONFIG
     log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
-    uvicorn.run("narrativeai.api.api:app", reload=True ,log_config=log_config)
+    uvicorn.run("narrativeai.api.api:app", reload=True, log_config=log_config)
+
+
+def start_prod_server():
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
+    uvicorn.run("narrativeai.api.api:app")

@@ -25,4 +25,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 dev = "narrativeai.api.api:start_dev_server"
+prod = "narrativeai.api.api:start_prod_server"
 test-llm = "narrativeai.main:main"
