@@ -13,14 +13,14 @@ from .database import (
     update_story
 )
 
-from .schema import StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel, StoryFromTemplateRequestModel, StoryUpdateRequestModel
+from .schema import MessageEditItem, MessageOperation, StoryCreateRequestModel, StoryModel, GenreModel, StoryStateModel, StoryFromTemplateRequestModel, StoryUpdateRequestModel
 from ...llm.states import Message
 from ...llm.workflow import WorkflowBuilder
 from ...llm.llm import get_model_name
 from ..dependencies import HttpExceptionCustom
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from ..user.database import get_user_by_firebase_uid
 from langchain.prompts import ChatPromptTemplate
 from ..template.services import get_template_response
@@ -360,4 +360,58 @@ def update_story_response(story_id: str, request: StoryUpdateRequestModel) -> bo
         raise HttpExceptionCustom.internal_server_error("Failed to update story")
     
     return True
+
+def edit_story_messages(story_id: str, message_updates: List[MessageEditItem]) -> List[Message]:
+    """Edit specific messages in a story's message history.
+    
+    Args:
+        story_id: The ID of the story to edit
+        message_updates: List of message edit operations
+        
+    Returns:
+        Updated list of messages
+    """
+    # Get current state
+    state = get_story_state(story_id)
+    if not state:
+        logger.error(f"No state found for story {story_id}")
+        raise HttpExceptionCustom.not_found("Story not found")
+    
+    # Sort operations by index in reverse order to handle deletes and inserts properly
+    message_updates.sort(key=lambda x: x.index, reverse=True)
+    
+    # Process each operation
+    for update in message_updates:
+        # Validate index
+        if update.index < 0:
+            raise HttpExceptionCustom.bad_request(f"Invalid message index: {update.index}")
+            
+        if update.operation == MessageOperation.EDIT:
+            if update.index >= len(state.stories):
+                raise HttpExceptionCustom.bad_request(f"Invalid message index for edit: {update.index}")
+            if not update.content:
+                raise HttpExceptionCustom.bad_request("Content required for edit operation")
+            # Preserve original role
+            original_role = state.stories[update.index][0]
+            state.stories[update.index] = (original_role, update.content)
+            
+        elif update.operation == MessageOperation.DELETE:
+            if update.index >= len(state.stories):
+                raise HttpExceptionCustom.bad_request(f"Invalid message index for delete: {update.index}")
+            state.stories.pop(update.index)
+            
+        elif update.operation == MessageOperation.INSERT:
+            if update.index > len(state.stories):
+                raise HttpExceptionCustom.bad_request(f"Invalid message index for insert: {update.index}")
+            if not update.content:
+                raise HttpExceptionCustom.bad_request("Content required for insert operation")
+            state.stories.insert(update.index, (update.role, update.content))
+    
+    # Update state in database
+    state.updated_at = datetime.utcnow()
+    success = update_story_state(story_id, state)
+    if not success:
+        raise HttpExceptionCustom.internal_server_error("Failed to update story state")
+    
+    return state.stories
  

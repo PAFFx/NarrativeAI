@@ -13,7 +13,8 @@ from .schema import (
     WriteRequestModel,
     StoryCreateResponseModel,
     StoryFromTemplateRequestModel,
-    StoryUpdateRequestModel
+    StoryUpdateRequestModel,
+    MessageEditRequestModel
 )
 from .services import (
     create_new_story,
@@ -24,7 +25,8 @@ from .services import (
     get_story_response,
     create_story_from_template,
     delete_story_response,
-    update_story_response
+    update_story_response,
+    edit_story_messages
 )
 
 logger = logging.getLogger(__name__)
@@ -128,4 +130,14 @@ def update_story(story_id: str, request: StoryUpdateRequestModel):
         return update_story_response(story_id, request)
     except Exception as e:
         logger.error(f"Error updating story: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.patch("/{story_id}/messages", response_model=StoryMessageModel)
+def update_story_messages(story_id: str, request: MessageEditRequestModel):
+    """Update specific messages in a story."""
+    try:
+        updated_messages = edit_story_messages(story_id, request.messages)
+        return StoryMessageModel(messages=updated_messages)
+    except Exception as e:
+        logger.error(f"Error updating story messages: {e}")
         raise HttpExceptionCustom.internal_server_error

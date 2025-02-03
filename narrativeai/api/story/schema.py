@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Literal
 from datetime import datetime
 from ...llm.states import Message
+from enum import Enum
 
 from ..genre.schema import GenreModel
 
@@ -71,3 +72,20 @@ class StoryUpdateRequestModel(BaseModel):
     """Model for updating story details."""
     title: Optional[str] = None
     description: Optional[str] = None
+
+class MessageOperation(str, Enum):
+    """Enum for message operations."""
+    EDIT = "edit"
+    DELETE = "delete"
+    INSERT = "insert"
+
+class MessageEditItem(BaseModel):
+    """Model for a single message edit operation."""
+    index: int
+    content: Optional[str] = None  # Optional for delete operation
+    operation: MessageOperation
+    role: Optional[str] = "user"  # Only used for insert operation
+
+class MessageEditRequestModel(BaseModel):
+    """Model for editing story messages."""
+    messages: List[MessageEditItem]
