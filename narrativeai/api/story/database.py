@@ -149,6 +149,7 @@ def create_story_doc(request: StoryCreateRequestModel) -> str:
             "genre_list": [ObjectId(genre_id) for genre_id in request.genre_ids],
             "cover_image": request.cover_image,
             "author_firebase_uid": request.author_firebase_uid,
+            "template_id": request.template_id,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
@@ -164,4 +165,52 @@ def create_story_doc(request: StoryCreateRequestModel) -> str:
         
     except Exception as e:
         logger.error(f"Error creating story document: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+def delete_story(story_id: str) -> bool:
+    """Delete a story and its state from database."""
+    logger.info(f"Deleting story {story_id}")
+    
+    try:
+        # Delete story document
+        story_result = db_client.story_collection.delete_one({"_id": ObjectId(story_id)})
+        
+        # Delete story state
+        state_result = db_client.story_states_collection.delete_one({"story_id": ObjectId(story_id)})
+        
+        success = story_result.deleted_count > 0
+        if success:
+            logger.info(f"Successfully deleted story {story_id}")
+        else:
+            logger.warning(f"No story found to delete with id {story_id}")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+def update_story(story_id: str, update_data: dict) -> bool:
+    """Update story details in database."""
+    logger.info(f"Updating story {story_id}")
+    
+    try:
+        # Add updated timestamp
+        update_data["updated_at"] = datetime.utcnow()
+        
+        result = db_client.story_collection.update_one(
+            {"_id": ObjectId(story_id)},
+            {"$set": update_data}
+        )
+        
+        success = result.modified_count > 0
+        if success:
+            logger.info(f"Successfully updated story {story_id}")
+        else:
+            logger.warning(f"No story found to update with id {story_id}")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error updating story: {e}")
         raise HttpExceptionCustom.internal_server_error

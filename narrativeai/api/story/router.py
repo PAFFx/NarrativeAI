@@ -2,8 +2,32 @@ from fastapi import APIRouter, Depends, HTTPException
 import logging
 
 from ..dependencies import GenericOKResponse, common_pagination_parameters, HttpExceptionCustom
-from .schema import ListStoryResponseModel, StoryCreateRequestModel, StoryMessageModel, StoryModel, StoryStateModel, WriteFromPromptRequestModel, WriteFromPromptResponseModel, WriteRequestModel, StoryCreateResponseModel
-from .services import create_new_story, get_story_message, list_stories_response, write_response_from_prompt, write_story_message, get_story_response
+from .schema import (
+    ListStoryResponseModel,
+    StoryCreateRequestModel,
+    StoryMessageModel,
+    StoryModel,
+    StoryStateModel,
+    WriteFromPromptRequestModel,
+    WriteFromPromptResponseModel,
+    WriteRequestModel,
+    StoryCreateResponseModel,
+    StoryFromTemplateRequestModel,
+    StoryUpdateRequestModel,
+    MessageEditRequestModel
+)
+from .services import (
+    create_new_story,
+    get_story_message,
+    list_stories_response,
+    write_response_from_prompt,
+    write_story_message,
+    get_story_response,
+    create_story_from_template,
+    delete_story_response,
+    update_story_response,
+    edit_story_messages
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +41,7 @@ router = APIRouter(
     ],
 )
 
-@router.get("", response_model=ListStoryResponseModel)
+@router.get("/", response_model=ListStoryResponseModel, response_model_exclude_none=True)
 def list_stories(
     skip: int = 0,
     limit: int = 10,
@@ -28,7 +52,7 @@ def list_stories(
     return ListStoryResponseModel(stories=stories)
 
 @router.post(
-        "",
+        "/",
         status_code=201,
         response_model_exclude_none=True,
         response_model=StoryCreateResponseModel,
@@ -74,3 +98,46 @@ def write_from_prompt(request: WriteFromPromptRequestModel):
     model = request.model
     new_message = write_response_from_prompt(story, model)
     return WriteFromPromptResponseModel(next_story=new_message)
+
+@router.post(
+    "/from_template",
+    status_code=201,
+    response_model=StoryCreateResponseModel,
+)
+def create_from_template(request: StoryFromTemplateRequestModel):
+    """Create a new story from template."""
+    try:
+        logger.info(f"Creating story from template: {request}")
+        story_id = create_story_from_template(request)
+        return StoryCreateResponseModel(story_id=story_id)
+    except Exception as e:
+        logger.error(f"Error creating story from template: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.delete("/{story_id}", response_model=bool)
+def delete_story(story_id: str):
+    """Delete a story and its state."""
+    try:
+        return delete_story_response(story_id)
+    except Exception as e:
+        logger.error(f"Error deleting story: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.patch("/{story_id}", response_model=bool)
+def update_story(story_id: str, request: StoryUpdateRequestModel):
+    """Update story details."""
+    try:
+        return update_story_response(story_id, request)
+    except Exception as e:
+        logger.error(f"Error updating story: {e}")
+        raise HttpExceptionCustom.internal_server_error
+
+@router.patch("/{story_id}/messages", response_model=StoryMessageModel)
+def update_story_messages(story_id: str, request: MessageEditRequestModel):
+    """Update specific messages in a story."""
+    try:
+        updated_messages = edit_story_messages(story_id, request.messages)
+        return StoryMessageModel(messages=updated_messages)
+    except Exception as e:
+        logger.error(f"Error updating story messages: {e}")
+        raise HttpExceptionCustom.internal_server_error

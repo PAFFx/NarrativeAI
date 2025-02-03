@@ -1,11 +1,10 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Literal
 from datetime import datetime
 from ...llm.states import Message
+from enum import Enum
 
-class GenreModel(BaseModel):
-    id: str
-    name: str
+from ..genre.schema import GenreModel
 
 class StoryModel(BaseModel):
     id: str
@@ -14,6 +13,7 @@ class StoryModel(BaseModel):
     genre_list: list[GenreModel]
     cover_image: str | None = None
     author: str | None = None  # This will be the display name
+    template_id: str | None = None
 
 class StoryCreateRequestModel(BaseModel):
     title: str
@@ -21,6 +21,7 @@ class StoryCreateRequestModel(BaseModel):
     genre_ids: list[str]
     cover_image: str | None = None
     author_firebase_uid: str  # This is the Firebase UID for storage
+    template_id: str | None = None
 
 class ListStoryResponseModel(BaseModel):
     stories: list[StoryModel]
@@ -60,3 +61,31 @@ class WriteFromPromptRequestModel(BaseModel):
 class WriteFromPromptResponseModel(BaseModel):
     """Response model for write from prompt."""
     next_story: str
+
+class StoryFromTemplateRequestModel(BaseModel):
+    """Model for creating story from template."""
+    template_id: str
+    params: Dict[str, str]
+    author_firebase_uid: Optional[str] = None
+
+class StoryUpdateRequestModel(BaseModel):
+    """Model for updating story details."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+class MessageOperation(str, Enum):
+    """Enum for message operations."""
+    EDIT = "edit"
+    DELETE = "delete"
+    INSERT = "insert"
+
+class MessageEditItem(BaseModel):
+    """Model for a single message edit operation."""
+    index: int
+    content: Optional[str] = None  # Optional for delete operation
+    operation: MessageOperation
+    role: Optional[str] = "user"  # Only used for insert operation
+
+class MessageEditRequestModel(BaseModel):
+    """Model for editing story messages."""
+    messages: List[MessageEditItem]
