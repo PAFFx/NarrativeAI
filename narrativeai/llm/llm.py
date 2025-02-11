@@ -88,8 +88,8 @@ class LLMFactory:
             raise ValueError(f"Unsupported provider: {provider}")
 
 def get_model(
-    model_name: ModelName = "gpt-4",
+    model_name: ModelName = "gpt-4o",
     **kwargs
 ) -> ChatOpenAI | ChatAnthropic :
     """Convenience function to get an LLM instance."""
-    return LLMFactory.create_llm(model_name, **kwargs)
+    return LLMFactory.create_llm(get_model_name(model_name), **kwargs)

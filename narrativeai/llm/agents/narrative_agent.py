@@ -14,6 +14,7 @@ class NarrativeAgent:
     
     def __init__(self, tools: List[BaseTool], genre_list: List[str], model_name: ModelName = "gpt-4"):
         self.llm = get_model(model_name=model_name)
+        self.llm_token_counter = get_model()
         self.tools = tools
         self.genre_list = genre_list
         self.model_name = model_name
@@ -113,7 +114,7 @@ class NarrativeAgent:
         trimmed_messages = trim_messages(
             messages=story_messages,
             max_tokens=self.max_context_tokens,
-            token_counter=self.llm,  # Use the LLM's token counter
+            token_counter=self.llm_token_counter,  # Use the LLM's token counter
             strategy="last",  # Keep the most recent messages
             start_on="human",  # Start with a human message
             include_system=True  # Keep system messages
@@ -141,7 +142,7 @@ class NarrativeAgent:
         trimmed_messages = trim_messages(
             messages=plot_messages,
             max_tokens=self.max_context_tokens // 2,  # Use half the context for plots
-            token_counter=self.llm,
+            token_counter=self.llm_token_counter,
             strategy="last",  # Keep most recent plot ideas
             include_system=False
         )

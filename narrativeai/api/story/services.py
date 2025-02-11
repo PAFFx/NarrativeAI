@@ -189,8 +189,8 @@ async def write_story_message(story_id: str, message: str, model: str = "gpt-4o"
         workflow = WorkflowBuilder(
             genre_list=genre_names, 
             narrative_model=model_name,
-            writer_model="gpt-4o",
-            plotter_model="gpt-4o",
+            writer_model=model_name,
+            plotter_model=model_name,
         ).compile()
         config = {"configurable": {"thread_id": story_id}}
         
