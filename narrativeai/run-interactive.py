@@ -77,6 +77,10 @@ async def process_user_input(user_input: str, workflow: CompiledStateGraph, genr
             "error": None
         }
         
+        # Add thread_id directly to the state if provided
+        if thread_id:
+            initial_state["thread_id"] = thread_id
+        
         # Create config with thread_id for checkpointing
         config = {"configurable": {"thread_id": thread_id}} if thread_id else {}
         

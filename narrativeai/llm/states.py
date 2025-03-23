@@ -13,3 +13,4 @@ class GraphState(TypedDict):
     genre_list: List[str]
     status: Literal["RUNNING", "WAITING_USER_INPUT", "COMPLETE"]
     error: Optional[str]
+    thread_id: Optional[str]

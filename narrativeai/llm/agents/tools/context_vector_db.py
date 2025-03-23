@@ -254,7 +254,7 @@ class WeaviateClient:
             if len(filter_conditions) == 1:
                 filter_query = filter_conditions[0]
             else:
-                filter_query = Filter.any_of(*filter_conditions)
+                filter_query = Filter.any_of(filter_conditions)
         
         try:
             # First step: perform hybrid search to get initial results
@@ -363,15 +363,44 @@ class WeaviateClient:
 class MemoryRetriever:
     """Class for retrieving memories from the vector database."""
     
-    def __init__(self, client: WeaviateClient, collection_name: str = "StoryMemory"):
+    def __init__(self, client: WeaviateClient, thread_id: str = None, collection_prefix: str = "story_"):
         """Initialize the memory retriever.
         
         Args:
             client: Weaviate client
-            collection_name: Name of the collection to query
+            thread_id: Unique identifier for the conversation thread
+            collection_prefix: Prefix for collection names, default is "story_"
         """
         self.client = client
-        self.collection_name = collection_name
+        self.thread_id = thread_id
+        self.collection_prefix = collection_prefix
+        self.collection_name = self._get_collection_name()
+        
+    def _get_collection_name(self) -> str:
+        """Get the collection name for the current thread.
+        
+        If no thread_id is provided, uses the default "StoryMemory" collection.
+        
+        Returns:
+            Collection name
+        """
+        if not self.thread_id:
+            return "StoryMemory"  # Default collection for backward compatibility
+        
+        # Create a collection name from the thread ID
+        # Replace dashes with underscores for valid Weaviate collection names
+        safe_thread_id = str(self.thread_id).replace("-", "_")
+        return f"{self.collection_prefix}{safe_thread_id}"
+    
+    def set_thread_id(self, thread_id: str) -> None:
+        """Update the thread ID and collection name.
+        
+        Args:
+            thread_id: New thread ID to use
+        """
+        self.thread_id = thread_id
+        self.collection_name = self._get_collection_name()
+        logger.info(f"Memory retriever now using collection: {self.collection_name}")
     
     def parse_memory_query(self, query_str: str) -> dict:
         """Parse the memory agent's output into a structured query.
@@ -546,4 +575,6 @@ class MemoryRetriever:
 
 # Initialize the client using context manager pattern
 weaviate_client = WeaviateClient()
+
+# Initialize with default collection - will be updated per thread in workflow
 memory_retriever = MemoryRetriever(weaviate_client)

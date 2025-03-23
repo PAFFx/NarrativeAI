@@ -67,6 +67,12 @@ class WorkflowBuilder:
             return state
             
         try:
+            # Set thread ID in memory retriever if provided in state
+            thread_id = state.get("thread_id")
+            if thread_id:
+                # Update memory retriever to use thread-specific collection
+                memory_retriever.set_thread_id(thread_id)
+            
             # Get memory query from memory agent
             memory_query_str = await self.memory_agent.ainvoke(state)
             
