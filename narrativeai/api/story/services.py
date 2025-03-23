@@ -132,9 +132,7 @@ def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
         # Get workflow
         workflow = WorkflowBuilder(
             genre_list=["creative"],  # Default genre since we don't need specific ones
-            narrative_model=model_name,
             writer_model=model_name,
-            plotter_model=model_name,
         ).compile()
         
         config = {"configurable": {"thread_id": "temp"}}
@@ -188,9 +186,7 @@ async def write_story_message(story_id: str, message: str, model: str = "gpt-4o"
         # Get workflow with story's genre list
         workflow = WorkflowBuilder(
             genre_list=genre_names, 
-            narrative_model=model_name,
             writer_model=model_name,
-            plotter_model=model_name,
         ).compile()
         config = {"configurable": {"thread_id": story_id}}
         

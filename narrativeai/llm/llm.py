@@ -15,14 +15,19 @@ logger = logging.getLogger(__name__)
 
 ModelProvider = Literal["openai", "anthropic"]
 ModelName = Literal[
+    "gpt-3.5-turbo",
     "gpt-4o",
+    "gpt-4",
+    "gpt-4-turbo",
     "claude-3-5-sonnet-20241022"
 ]
 
 # Mapping from user-friendly names to actual model names
 MODEL_NAME_MAPPING = {
-    "gpt-4": "gpt-4o",
-    "gpt-4o": "gpt-4o",  # OpenAI GPT-4
+    "gpt-3.5-turbo": "gpt-3.5-turbo",  # OpenAI GPT-3.5
+    "gpt-4": "gpt-4",  # OpenAI GPT-4
+    "gpt-4o": "gpt-4o",  # OpenAI GPT-4o
+    "gpt-4-turbo": "gpt-4-turbo",  # OpenAI GPT-4 Turbo
     "claude-3-sonnet": "claude-3-5-sonnet-20241022"
 }
 
@@ -42,10 +47,28 @@ class LLMConfig:
     
     # Default configurations for each model
     MODEL_CONFIGS = {
+        "gpt-3.5-turbo": {
+            "provider": "openai",
+            "temperature": 0.7,
+            "max_tokens": 4000,
+            "top_p": 1.0,
+        },
+        "gpt-4": {
+            "provider": "openai",
+            "temperature": 0.7,
+            "max_tokens": 8000,
+            "top_p": 1.0,
+        },
         "gpt-4o": {
             "provider": "openai",
             "temperature": 0.7,
-            "max_tokens": 16000,
+            "max_tokens": 8000,
+            "top_p": 1.0,
+        },
+        "gpt-4-turbo": {
+            "provider": "openai",
+            "temperature": 0.7,
+            "max_tokens": 128000,
             "top_p": 1.0,
         },
         "claude-3-5-sonnet-20241022": {

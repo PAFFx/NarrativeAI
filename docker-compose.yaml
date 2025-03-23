@@ -1,13 +1,39 @@
-version: '3.8'
-
 services:
-  web:
-    build: .
+  db:
+    image: mongo
     ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
+      - "27017:27017"
     environment:
-      - PYTHONPATH=/app
-      - FASTAPI_ENV=development
-    command: poetry run uvicorn narrativeai.api.api:app --host 0.0.0.0 --port 8000 --reload
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=verystrongrootpassword
+      - MONGO_INITDB_DATABASE=NarrativeAI
+    volumes:
+      - db_data:/data/db
+
+  weaviate:
+    command:
+    - --host
+    - 0.0.0.0
+    - --port
+    - '8080'
+    - --scheme
+    - http
+    image: cr.weaviate.io/semitechnologies/weaviate:1.29.1
+    ports:
+    - 8080:8080
+    - 50051:50051
+    volumes:
+    - weaviate_data:/var/lib/weaviate
+    restart: on-failure:0
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      ENABLE_API_BASED_MODULES: 'true'
+      CLUSTER_HOSTNAME: 'node1'
+volumes:
+  db_data:
+    driver: local
+  weaviate_data:
+    driver: local
+

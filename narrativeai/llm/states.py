@@ -4,13 +4,12 @@ from langgraph.graph.message import add_messages
 from dataclasses import dataclass
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
 
-MessageRole = Literal["user", "assistant", "system"]
-Message = Tuple[MessageRole, str]
-
 class GraphState(TypedDict):
     """State definition for the story generation workflow."""
-    stories: Annotated[List[Message], add_messages]
-    longterm_plots: Annotated[List[str], add_messages]
-    guidelines: Annotated[List[str], add_messages]
-    requested_act: Optional[str]
-    conseq_longterm_count: int  # Track consecutive longterm plotter invocations
+    conversation_history: List[HumanMessage | AIMessage | SystemMessage]
+    current_message: Optional[Union[HumanMessage, AIMessage, SystemMessage]]
+    memory_query: Optional[dict]
+    memory_results: Optional[List[dict]]
+    genre_list: List[str]
+    status: Literal["RUNNING", "WAITING_USER_INPUT", "COMPLETE"]
+    error: Optional[str]

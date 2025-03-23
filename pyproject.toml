@@ -17,6 +17,7 @@ fastapi = "^0.115.6"
 uvicorn = "^0.34.0"
 pymongo = "^4.10.1"
 langchain-anthropic = "^0.3.5"
+weaviate-client = "^4.11.2"
 
 
 [build-system]
