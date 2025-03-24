@@ -20,6 +20,7 @@ from ...llm.llm import get_model_name
 from ..dependencies import HttpExceptionCustom
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 import logging
+import uuid
 from typing import List, Tuple, Dict
 from ..user.database import get_user_by_firebase_uid
 from langchain.prompts import ChatPromptTemplate
@@ -118,6 +119,9 @@ def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
         # Convert user-friendly model name to actual model name
         model_name = get_model_name(model)
         
+        # Create a temporary thread_id for this prompt
+        thread_id = f"temp_{str(uuid.uuid4())}"
+        
         # Create initial state with the input story as user message
         initial_state = StoryStateModel(
             story_id="temp",  # Temporary ID since we don't need to save
@@ -126,7 +130,8 @@ def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
             guidelines=[],
             requested_act=None,
             conseq_longterm_count=0,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
+            thread_id=thread_id  # Add thread_id to state
         )
         
         # Get workflow
@@ -135,7 +140,7 @@ def write_response_from_prompt(story: str, model: str = "gpt-4o") -> str:
             writer_model=model_name,
         ).compile()
         
-        config = {"configurable": {"thread_id": "temp"}}
+        config = {"configurable": {"thread_id": thread_id}}
         
         # Process through workflow
         events = workflow.stream(initial_state.model_dump(), config, stream_mode='values')
@@ -183,19 +188,29 @@ async def write_story_message(story_id: str, message: str, model: str = "gpt-4o"
         genre_lookup = {genre["id"]: genre["name"] for genre in genre_list}
         genre_names = [genre_lookup.get(genre_id, "Unknown") for genre_id in story["genre_list"]]
         
+        # Use story_id as the thread_id for memory isolation
+        thread_id = story_id
+        
+        # Add thread_id to state if it doesn't exist
+        state_dict = state.model_dump()
+        state_dict["thread_id"] = thread_id
+        
         # Get workflow with story's genre list
         workflow = WorkflowBuilder(
             genre_list=genre_names, 
             writer_model=model_name,
         ).compile()
-        config = {"configurable": {"thread_id": story_id}}
+        
+        # Pass thread_id in config for memory isolation
+        config = {"configurable": {"thread_id": thread_id}}
         
         # Keep track of new messages
         new_messages = []
         last_story_len = len(state.stories)
         
         try:
-            output = await workflow.ainvoke(state.model_dump(), config)
+            # Use the state dict with thread_id
+            output = await workflow.ainvoke(state_dict, config)
 
             story_messages = output.get("stories", [])
             if story_messages and len(story_messages) > last_story_len:
@@ -305,7 +320,8 @@ def create_story_from_template(request: StoryFromTemplateRequestModel) -> str:
         guidelines=[],
         requested_act=None,
         conseq_longterm_count=0,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
+        thread_id=str(story_id)  # Use story_id as thread_id for memory isolation
     )
     
     # Save story state

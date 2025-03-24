@@ -273,7 +273,6 @@ class WriterAgent:
                     if "importance_score" not in memory_data:
                         memory_data["importance_score"] = 0.5
                     
-                    logger.info("Successfully parsed structured story output")
                     return memory_data
                 else:
                     # No JSON found, create a structured response with the content as text

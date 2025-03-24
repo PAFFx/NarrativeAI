@@ -210,10 +210,15 @@ async def main_async():
         print(f"{RED}Initialization error: {str(e)}{RESET}")
         print(f"{ORANGE}Make sure all dependencies are installed and configured properly.{RESET}")
         print(f"{ORANGE}Check the logs for more details.{RESET}")
+            
 
 def main():
     """Main entry point function."""
     asyncio.run(main_async())
+
+    from narrativeai.llm.agents.tools.context_vector_db import WeaviateClient
+    # Cleanup
+    WeaviateClient.close()
 
 if __name__ == "__main__":
     main() 

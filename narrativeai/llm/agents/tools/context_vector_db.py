@@ -23,7 +23,18 @@ from weaviate.exceptions import WeaviateQueryError
 logger = logging.getLogger(__name__)
 
 class WeaviateClient:
-    """Client for Weaviate vector database interactions."""
+    """Singleton client for Weaviate vector database interactions."""
+    
+    # Singleton instance
+    _instance = None
+    
+    def __new__(cls, connection_url: str = None, api_key: str = None):
+        """Implement singleton pattern."""
+        if cls._instance is None:
+            logger.info("Creating new WeaviateClient singleton instance")
+            cls._instance = super(WeaviateClient, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
     
     def __init__(self, connection_url: str = None, api_key: str = None):
         """Initialize a Weaviate client.
@@ -34,6 +45,10 @@ class WeaviateClient:
             api_key: API key for authentication.
                      If None, uses WEAVIATE_API_KEY environment variable.
         """
+        # Skip initialization if already initialized
+        if self._initialized:
+            return
+            
         self.connection_url = connection_url or os.getenv("WEAVIATE_URL", "http://localhost:8080")
         self.api_key = api_key or os.getenv("WEAVIATE_API_KEY")
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -82,15 +97,22 @@ class WeaviateClient:
         if not self.client.is_ready():
             logger.warning("Weaviate client initialized but server not ready")
             raise ConnectionError("Weaviate server not ready")
+        
+        self._initialized = True
+    
+    @classmethod
+    def close(cls):
+        """Close the singleton instance."""
+        if cls._instance is not None:
+            try:
+                if hasattr(cls._instance, 'client'):
+                    cls._instance.client.close()
+                    logger.info("Closed Weaviate client connection")
+            except Exception as e:
+                logger.warning(f"Error closing Weaviate client: {str(e)}")
+            cls._instance = None
+            logger.info("WeaviateClient singleton instance reset")
             
-    def __del__(self):
-        """Clean up resources when object is deleted."""
-        try:
-            if hasattr(self, 'client'):
-                self.client.close()
-                logger.info("Closed Weaviate client connection")
-        except Exception as e:
-            logger.warning(f"Error closing Weaviate client: {str(e)}")
     
     def _ensure_schema_exists(self, collection_name: str = "StoryMemory"):
         """Ensure the required schema exists in Weaviate.
@@ -106,10 +128,10 @@ class WeaviateClient:
             if self.client.collections.exists(collection_name):
                 # Try to get the collection - if it exists, this will succeed
                 collection = self.client.collections.get(collection_name)
-                logger.info(f"Collection {collection_name} already exists")
                 return collection
             else:
                 # Create a basic collection with minimal configuration
+                logger.info(f"Creating new collection: {collection_name}")
                 collection = self.client.collections.create(
                     name=collection_name,
                     description="Memory elements from the interactive story",
@@ -269,7 +291,8 @@ class WeaviateClient:
             )
             
             if not response.objects:
-                raise ValueError(f"No initial memories found for query: {query_params}")
+                # No memories found, return empty list
+                return []
             
             logger.info(f"Retrieved {len(response.objects)} initial memories from Weaviate for reranking")
             
@@ -360,21 +383,24 @@ class WeaviateClient:
         logger.info(f"Added memory to Weaviate with ID: {memory_id}")
         return memory_id
 
+
 class MemoryRetriever:
     """Class for retrieving memories from the vector database."""
     
-    def __init__(self, client: WeaviateClient, thread_id: str = None, collection_prefix: str = "story_"):
+    def __init__(self, client: WeaviateClient = None, thread_id: str = None, collection_prefix: str = "story_"):
         """Initialize the memory retriever.
         
         Args:
-            client: Weaviate client
+            client: Weaviate client (will use singleton if None)
             thread_id: Unique identifier for the conversation thread
             collection_prefix: Prefix for collection names, default is "story_"
         """
-        self.client = client
+        # Use provided client or get the singleton instance
+        self.client = client or WeaviateClient()
         self.thread_id = thread_id
         self.collection_prefix = collection_prefix
         self.collection_name = self._get_collection_name()
+        logger.info(f"Created MemoryRetriever for collection: {self.collection_name}")
         
     def _get_collection_name(self) -> str:
         """Get the collection name for the current thread.
@@ -385,12 +411,15 @@ class MemoryRetriever:
             Collection name
         """
         if not self.thread_id:
+            logger.warning("No thread_id provided, using default StoryMemory collection")
             return "StoryMemory"  # Default collection for backward compatibility
         
         # Create a collection name from the thread ID
         # Replace dashes with underscores for valid Weaviate collection names
         safe_thread_id = str(self.thread_id).replace("-", "_")
-        return f"{self.collection_prefix}{safe_thread_id}"
+        collection_name = f"{self.collection_prefix}{safe_thread_id}"
+        logger.info(f"Created thread-specific collection name: {collection_name}")
+        return collection_name
     
     def set_thread_id(self, thread_id: str) -> None:
         """Update the thread ID and collection name.
@@ -398,9 +427,28 @@ class MemoryRetriever:
         Args:
             thread_id: New thread ID to use
         """
+        if not thread_id:
+            logger.warning("Attempted to set empty thread_id")
+            return
+            
+        logger.info(f"Setting thread ID: {thread_id}")
+        
+        # If thread_id is the same, no need to update
+        if self.thread_id == thread_id:
+            logger.info(f"Thread ID already set to {thread_id}, using collection: {self.collection_name}")
+            return
+            
+        # Update thread_id and collection_name
         self.thread_id = thread_id
+        old_collection = self.collection_name
         self.collection_name = self._get_collection_name()
-        logger.info(f"Memory retriever now using collection: {self.collection_name}")
+        
+        # Initialize the collection to make sure it exists
+        try:
+            self.client._ensure_schema_exists(self.collection_name)
+            logger.info(f"Memory retriever switched from '{old_collection}' to '{self.collection_name}'")
+        except Exception as e:
+            logger.error(f"Error initializing collection {self.collection_name}: {str(e)}")
     
     def parse_memory_query(self, query_str: str) -> dict:
         """Parse the memory agent's output into a structured query.
@@ -484,7 +532,7 @@ class MemoryRetriever:
         return query_dict
     
     def retrieve_memories(self, query_dict: dict) -> List[dict]:
-        """Retrieve memories from the vector database.
+        """Retrieve memories from the vector database for the current thread.
         
         Args:
             query_dict: Structured query dictionary
@@ -503,14 +551,18 @@ class MemoryRetriever:
         if "query_text" not in query_dict or not query_dict["query_text"]:
             logger.warning("Missing query_text in query_dict, using default")
             query_dict["query_text"] = "story continuation"
+        
+        # Make sure the collection exists before querying
+        self.client._ensure_schema_exists(self.collection_name)
+        logger.info(f"Retrieving memories from collection: {self.collection_name}")
             
-        # Query the database
+        # Query the database using the thread-specific collection
         memories = self.client.query(self.collection_name, query_dict)
-        logger.info(f"Retrieved {len(memories)} memories")
+        logger.info(f"Retrieved {len(memories)} memories from collection {self.collection_name}")
         return memories
             
     def add_memory(self, memory_data: dict) -> str:
-        """Add a new memory to the database.
+        """Add a new memory to the thread-specific collection.
         
         Args:
             memory_data: Memory data to add
@@ -565,16 +617,33 @@ class MemoryRetriever:
                     # If timestamp couldn't be parsed, set a new one
                     memory_data["timestamp"] = format_rfc3339_datetime()
             
-            # Add the memory to Weaviate
+            # Make sure the collection exists before adding memory
+            # This is critical to ensure we're using the right collection
+            self.client._ensure_schema_exists(self.collection_name)
+            
+            # Add the memory to the thread-specific Weaviate collection
+            logger.info(f"Adding memory to collection: {self.collection_name}")
             memory_id = self.client.add_memory(self.collection_name, memory_data)
-            logger.info(f"Added new memory with ID: {memory_id}")
+            logger.info(f"Added new memory with ID: {memory_id} to collection {self.collection_name}")
             return memory_id
         except Exception as e:
-            logger.exception(f"Error adding memory: {str(e)}")
+            logger.exception(f"Error adding memory to collection {self.collection_name}: {str(e)}")
             return ""
 
-# Initialize the client using context manager pattern
-weaviate_client = WeaviateClient()
 
-# Initialize with default collection - will be updated per thread in workflow
-memory_retriever = MemoryRetriever(weaviate_client)
+# Initialize the singleton client to use across the application
+weaviate_client = WeaviateClient()
+logger.info("Initialized WeaviateClient singleton")
+
+# Helper function to create a memory retriever with the singleton client
+def create_memory_retriever(thread_id: str = None, collection_prefix: str = "story_") -> MemoryRetriever:
+    """Create a new MemoryRetriever using the singleton WeaviateClient.
+    
+    Args:
+        thread_id: Optional thread ID to associate with this retriever
+        collection_prefix: Prefix for collection names (default: "story_")
+        
+    Returns:
+        New MemoryRetriever instance
+    """
+    return MemoryRetriever(weaviate_client, thread_id, collection_prefix)

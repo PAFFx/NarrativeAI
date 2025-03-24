@@ -90,7 +90,6 @@ async def process_prompt(prompt: str, workflow, genre_list: List[str]) -> str:
         logger.exception(f"Error processing prompt: {str(e)}")
         return f"Error generating response: {str(e)}"
 
-
 async def generate_completions(
     prompts: List[str], 
     writer_model: str = "gpt-4o", 
@@ -110,7 +109,7 @@ async def generate_completions(
     """
     # Set default genres if none provided
     if not genres:
-        genres = ["creative", "fantasy"]
+        genres = ["creative"]
     
     logger.info(f"Generating completions for {len(prompts)} prompts")
     logger.info(f"Writer model: {writer_model}, Memory model: {memory_model}, Genres: {genres}")
@@ -188,7 +187,6 @@ async def main_async():
             json.dump(result, f, indent=2)
     else:
         print(json.dumps(result, indent=2))
-
 
 def main():
     """Main entry point function."""

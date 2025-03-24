@@ -35,6 +35,7 @@ class StoryStateModel(BaseModel):
     requested_act: Optional[str]
     conseq_longterm_count: int = 0  # Track consecutive longterm plotter invocations
     updated_at: datetime = None
+    thread_id: Optional[str] = None  # Added for memory isolation
 
     class Config:
         json_encoders = {
